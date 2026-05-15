@@ -37,14 +37,16 @@ def upload_file():
         stderr=subprocess.STDOUT,
     )
 
-    for line in running_process.stdout:
-        print(line)
+    # for line in running_process.stdout:
+    #     print(line)
 
-    return jsonify({
+    result = {
         "message": "Server started",
         "filename": file.filename,
-        "port": SERVER_PORT,
-    })
+        "port": SERVER_PORT
+    }
+
+    return jsonify(result)
 
 def cleanup():
     global running_process

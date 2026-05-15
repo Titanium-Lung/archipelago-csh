@@ -3,7 +3,8 @@ import { useState } from 'react'
 function App() {
   const [file, setFile] = useState(null) 
   const [message, setMessage] = useState("")
-  const [serverInfo, setServerInfo] = useState(null)
+  // const [serverInfo, setServerInfo] = useState(null)
+  const [port, setPort] = useState("")
 
   function handleFileChange(event) {
     setFile(event.target.files[0])
@@ -24,13 +25,14 @@ function App() {
         body: formData
       })
 
-      const data = await response.json
+      const result = await response.json()
+
 
       if (response.ok) {
         setMessage("Server started!")
-        setServerInfo(data)
+        setPort(result.port)
       } else {
-        setMessage("Error: " + data.error)
+        setMessage("Error: " + result.error)
       }
     } catch (error) {
       setMessage("Error: " + error.message)
@@ -43,12 +45,13 @@ function App() {
       <input type="file" accept=".archipelago" onChange={handleFileChange} />
       <button onClick={handleUpload}>Upload</button>
       <p>{message}</p>
-      {serverInfo && (
-        <div>
-          <p>World: {serverInfo.filename}</p>
-          <p>Players connect to: localhost:{serverInfo.port}</p>
-        </div>
-      )}
+      {
+        port != "" && (
+          <div>
+            <p>Port: {port}</p>
+          </div>
+        )
+      }
     </div>
   )
 }
