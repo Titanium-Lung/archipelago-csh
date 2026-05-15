@@ -8,7 +8,7 @@ app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "http://localhost:5173"}})
 
 UPLOAD_FOLDER = "uploads"
-ARCHIPELAGO_SERVER = "/Users/cooper/Archipelago-0.6.7/MultiServer.py"
+ARCHIPELAGO_SERVER = "Archipelago-0.6.7/MultiServer.py"
 SERVER_PORT = 38281
 
 running_process = None
@@ -32,7 +32,7 @@ def upload_file():
         running_process.terminate()
     
     running_process = subprocess.Popen(
-        ["/Users/cooper/Archipelago-0.6.7/venv/bin/python3", ARCHIPELAGO_SERVER, save_path, f"--port={SERVER_PORT}"],
+        ["Archipelago-0.6.7/venv/bin/python3", ARCHIPELAGO_SERVER, save_path, f"--port={SERVER_PORT}"],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
     )
