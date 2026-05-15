@@ -144,3 +144,13 @@ vite.config.ts.timestamp-*
 
 # Mac BS
 .DS_Store
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Backend
+backend/venv/
+backend/uploads/
+backend/__pycache__/
+*.pyc
