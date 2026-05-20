@@ -36,6 +36,7 @@ def upload_file():
         ["Archipelago-0.6.7/venv/bin/python3", ARCHIPELAGO_SERVER, save_path, f"--port={SERVER_PORT}"],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
+        stdin=subprocess.PIPE,
     )
 
     thread = threading.Thread(target=write_log, args=(running_process, "logs/serverlog.txt"))
@@ -86,6 +87,16 @@ def room_info():
         return jsonify({
             "port": SERVER_PORT
         })
+    
+@app.route("/command", methods=["POST"])
+def server_command():
+    if running_process is None:
+        abort(404)
+    else:
+        data = request.get_json()
+        running_process.stdin.write((data.get('command') + '\n').encode())
+        running_process.stdin.flush()
+        return jsonify({"message":"ok"})
     
 
 

@@ -37,6 +37,29 @@ function Room() {
         return () => clearInterval(interval)
     }, [])
 
+    const handleKeyUp = async (event) => {
+        if (event.key === 'Enter') {
+            console.log(event.target.value)
+            try {
+                const response = await fetch("http://localhost:5001/command", {
+                    method: "POST",
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ command: event.target.value })
+                })
+
+                const result = await response.json()
+
+                if (!response.ok) {
+                    console.log("Failed to send command to server")
+                }
+            } catch (error) {
+                console.error("Error: " + error)
+            }
+
+            document.getElementById('input').value = ''
+        }
+    }
+
     return (
         <div>
             <h1>Room</h1>
@@ -51,7 +74,12 @@ function Room() {
                     </div>
                 )
             }
-            <Link to="/log">Full log</Link>
+            <div class="log">
+                <input type="text" id="input" name="Server command" placeholder="Server command" onKeyUp={handleKeyUp} />
+            </div>
+            <div class="log">
+                <Link to="/log">Full log</Link>
+            </div>
             <div class="log">
                 {log.map((line, index) => (
                     <p key={index}>{line}</p>
