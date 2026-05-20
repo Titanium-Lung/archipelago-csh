@@ -7,7 +7,6 @@ function Home() {
 
     const [file, setFile] = useState(null) 
     const [message, setMessage] = useState("")
-    // const [serverInfo, setServerInfo] = useState(null)
     const [port, setPort] = useState("")
 
     function handleFileChange(event) {
@@ -16,35 +15,35 @@ function Home() {
 
     async function handleUpload() {
         if (!file) {
-        setMessage("Please select a file first.")
-        return
+            setMessage("Please select a file first.")
+            return
         }
         
         try {
-        const formData = new FormData()
-        formData.append("file", file)
+            const formData = new FormData()
+            formData.append("file", file)
 
-        const response = await fetch("http://localhost:5001/upload", {
-            method: "POST",
-            body: formData
-        })
+            const response = await fetch("http://localhost:5001/upload", {
+                method: "POST",
+                body: formData
+            })
 
-        const result = await response.json()
+            const result = await response.json()
 
 
-        if (response.ok) {
-            setMessage("Server started!")
-            setPort(result.port)
-        } else {
-            setMessage("Error: " + result.error)
-        }
+            if (response.ok) {
+                setMessage("Server started!")
+                setPort(result.port)
+            } else {
+                setMessage("Error: " + result.error)
+            }
         } catch (error) {
-        setMessage("Error: " + error.message)
+            setMessage("Error: " + error.message)
         }
     }
 
     function sendToRoom() {
-        navigate("/room", {state: {port: port, filler: 12}})
+        navigate("/room")
     }
 
     return (

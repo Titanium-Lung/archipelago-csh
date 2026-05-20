@@ -1,8 +1,9 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, abort
 from flask_cors import CORS
 import os
 import subprocess
 import atexit
+import threading
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "http://localhost:5173"}})
@@ -37,8 +38,9 @@ def upload_file():
         stderr=subprocess.STDOUT,
     )
 
-    # for line in running_process.stdout:
-    #     print(line)
+    thread = threading.Thread(target=write_log, args=(running_process, "logs/serverlog.txt"))
+    thread.daemon = True
+    thread.start()
 
     result = {
         "message": "Server started",
@@ -47,6 +49,51 @@ def upload_file():
     }
 
     return jsonify(result)
+
+@app.route("/log")
+def stream_log():
+    if running_process is None: 
+        return
+
+    f = open("logs/serverlog.txt", "r")
+    
+    result = { 
+        "lines": f.readlines()
+    }
+
+    return jsonify(result)
+
+@app.route("/log/last")
+def stream_log_bottom():
+    if running_process is None: 
+        return
+
+    f = open("logs/serverlog.txt", "r")
+    
+    result = { 
+        "lines": f.readlines()[-25:]
+    }
+
+    return jsonify(result)
+
+
+@app.route("/room")
+def room_info():
+    if running_process is None:
+        abort(404)
+    else:
+        print(SERVER_PORT)
+        return jsonify({
+            "port": SERVER_PORT
+        })
+    
+
+
+def write_log(process, filepath):
+    with open(filepath, "w") as f:
+        for line in process.stdout:
+            f.write(line.decode())
+            f.flush()
 
 def cleanup():
     global running_process
