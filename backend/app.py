@@ -66,7 +66,7 @@ def stream_log():
 @app.route("/log/last")
 def stream_log_bottom():
     if running_process is None: 
-        return
+        abort(404)
 
     f = open("logs/serverlog.txt", "r")
     
