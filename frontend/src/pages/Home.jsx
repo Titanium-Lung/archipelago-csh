@@ -49,7 +49,7 @@ function Home() {
     return (
         <div>
             <h1>Archipelago Host</h1>
-            <input type="file" accept=".archipelago" onChange={handleFileChange} />
+            <input type="file" accept=".zip" onChange={handleFileChange} />
             <button onClick={handleUpload}>Upload</button>
             <p>{message}</p>
             {

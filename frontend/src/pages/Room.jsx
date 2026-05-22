@@ -99,6 +99,7 @@ function Room() {
                                     <th>Id</th>
                                     <th>Name</th>
                                     <th>Game</th>
+                                    <th>Patch file</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -107,6 +108,14 @@ function Room() {
                                         <td>{player.slot}</td>
                                         <td>{player.name}</td>
                                         <td>{player.game}</td>
+                                        {
+                                            'patch' in player ? (
+                                                <td><a href={"http://localhost:5001/players/" + player.patch}>Download patch file</a></td>
+                                            ) : (
+                                                <td>No patch file to download</td>
+                                            )
+                                        }
+                                        
                                     </tr>
                                 ))}
                             </tbody>
