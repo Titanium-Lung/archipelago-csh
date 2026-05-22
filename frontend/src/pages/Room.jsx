@@ -4,6 +4,7 @@ import { Link } from "react-router-dom"
 function Room() {
     const [port, setPort] = useState("")
     const [log, setLog] = useState(["Populating log..."])
+    const [players, setPlayers] = useState([])
 
     useEffect(() => {
         async function fetchPort() {
@@ -35,6 +36,21 @@ function Room() {
 
         const interval = setInterval(fetchLog, 2000)
         return () => clearInterval(interval)
+    }, [])
+
+    useEffect(() => {
+        async function fetchPlayers() {
+            const response = await fetch("http://localhost:5001/players", {
+                method: "GET"
+            })
+
+            const result = await response.json()
+
+            if (response.ok) {
+                setPlayers(result.players)
+            }
+        }
+        fetchPlayers()
     }, [])
 
     const handleKeyUp = async (event) => {
@@ -71,6 +87,34 @@ function Room() {
                 ) : (
                     <div>
                         <p>No server currently running</p>
+                    </div>
+                )
+            }
+            {
+                players.length > 0 ? (
+                    <div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Id</th>
+                                    <th>Name</th>
+                                    <th>Game</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {players.map(player => (
+                                    <tr>
+                                        <td>{player.slot}</td>
+                                        <td>{player.name}</td>
+                                        <td>{player.game}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                ) : (
+                    <div>
+                        <p>Populating players</p>
                     </div>
                 )
             }
