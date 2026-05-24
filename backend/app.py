@@ -7,6 +7,7 @@ import threading
 import sys
 import zlib
 import zipfile
+from datetime import datetime
 sys.path.insert(0, "Archipelago-0.6.7")
 from Utils import restricted_loads
 
@@ -168,6 +169,68 @@ def send_patch_file(filename):
     filepath = os.path.join(extract_folder_path, filename)
 
     return send_file(filepath)
+
+@app.route("/tracker")
+def multiworld_data():
+    if running_process is None:
+        return jsonify({"error": "No archipelago server running"}), 404
+    
+    if arch_file_path is None:
+        return jsonify({"error": "No file uploaded"}), 404
+
+    with open(arch_file_path, "rb") as f:
+        data = f.read()
+    
+    decoded = restricted_loads(zlib.decompress(data[1:]))
+
+    players = [
+        {"slot": slot_id, "name": info.name, "game": info.game}
+        for slot_id, info, in decoded["slot_info"].items()
+    ]
+
+    with os.scandir(extract_folder_path) as folder:
+        apsave = False
+        for file in folder:
+            if file.is_file():
+                if file.name.endswith(".apsave"):
+                    with open(file.path, "rb") as f:
+                        decoded_apsave = restricted_loads(zlib.decompress(f.read()))
+
+                        # with open("sample_apsave.txt", "w") as f:
+                        #     f.write(str(decoded_apsave))
+
+                        player_activity = {}
+                        for activity in decoded_apsave["client_activity_timers"]:
+                            player_activity[activity[0]] = activity[1]
+
+                        for player in players:
+                            player["total_checks"] = len(decoded["locations"][player["slot"]])
+
+                            player_tuple = decoded["connect_names"][player["name"]] # Gives in format of (team#, slot#)
+
+                            location_checks = decoded_apsave.get("location_checks", {})
+                            player["checks_found"] = len(location_checks.get(player_tuple, set()))
+
+                            if player_tuple in player_activity:
+                                timediff = (datetime.now() - datetime.fromtimestamp(player_activity[player_tuple]))
+                                total_seconds = int(timediff.total_seconds())
+                                hours = total_seconds // 3600
+                                minutes = (total_seconds % 3600) // 60
+                                seconds = total_seconds % 60
+
+                                player["last_activity"] = f"{hours:02}:{minutes:02}:{seconds:02}"
+                            else:
+                                player["last_activity"] = "None"
+                        
+                        apsave = True
+        
+        if not apsave:
+            for player in players:
+                player["total_checks"] = len(decoded["locations"][player["slot"]])
+                player["checks_found"] = 0
+                player["last_activity"] = "None"
+
+    return jsonify({"players": players})
 
 
 
