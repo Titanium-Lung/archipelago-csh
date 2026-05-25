@@ -35,7 +35,7 @@ function Multitracker() {
                                     <th>Status</th>
                                     <th>Checks</th>
                                     <th>%</th>
-                                    <th>Last Activity</th>
+                                    <th>Last Check</th>
                                 </tr>
                             </thead>
                             <tbody>
