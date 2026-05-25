@@ -219,8 +219,13 @@ def multiworld_data():
                                 seconds = total_seconds % 60
 
                                 player["last_activity"] = f"{hours:02}:{minutes:02}:{seconds:02}"
+
+                                player["status"] = decoded_apsave['client_game_state'][player_tuple]
                             else:
                                 player["last_activity"] = "None"
+                                player["status"] = 0
+                                
+
                         
                         apsave = True
         

@@ -32,6 +32,7 @@ function Multitracker() {
                                     <th>Id</th>
                                     <th>Name</th>
                                     <th>Game</th>
+                                    <th>Status</th>
                                     <th>Checks</th>
                                     <th>%</th>
                                     <th>Last Activity</th>
@@ -43,6 +44,17 @@ function Multitracker() {
                                         <td>{player.slot}</td>
                                         <td>{player.name}</td>
                                         <td>{player.game}</td>
+                                        <td>
+                                            {
+                                                {
+                                                    0: "Disconnected",
+                                                    5: "Connected",
+                                                    10: "Ready",
+                                                    20: "Playing",
+                                                    30: "Goal Completed"
+                                                }[player.status] ?? "Unknown Status"
+                                            }
+                                        </td>
                                         <td>{player.checks_found + "/" + player.total_checks}</td>
                                         <td>{(player.checks_found/player.total_checks).toFixed(2)}</td>
                                         <td>{player.last_activity}</td>
