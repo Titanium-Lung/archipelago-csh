@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 
 function Multitracker() {
     const [players, setPlayers] = useState([])
+    const [totals, setTotals] = useState({})
 
     useEffect(() => {
         async function fetchMultiworld() {
@@ -14,6 +15,7 @@ function Multitracker() {
             if (response.ok) {
                 console.log("Successfully fetched")
                 setPlayers(result.players)
+                setTotals(result.totals)
             }
         }
         fetchMultiworld()
@@ -60,6 +62,15 @@ function Multitracker() {
                                         <td>{player.last_activity}</td>
                                     </tr>
                                 ))}
+                                <tr>
+                                    <td></td>
+                                    <td>Totals</td>
+                                    <td>All Games</td>
+                                    <td>{totals.games_complete + "/" + totals.num_players + " Complete"}</td>
+                                    <td>{totals.total_checked + "/" + totals.total_checks}</td>
+                                    <td>{(totals.total_checked/totals.total_checks).toFixed(2)}</td>
+                                    <td>{totals.recent_activity}</td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>

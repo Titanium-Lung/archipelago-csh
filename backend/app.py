@@ -220,6 +220,12 @@ def multiworld_data():
         for slot_id, info, in decoded_arch["slot_info"].items()
     ]
 
+    total_checks = 0
+    total_checked = 0
+    games_complete = 0
+    recent_activity = "None"
+    recent_activity_dt = (datetime.now() - datetime.fromtimestamp(0))
+
     with os.scandir(extract_folder_path) as folder:
         apsave = False
         for file in folder:
@@ -236,12 +242,16 @@ def multiworld_data():
                             player_activity[activity[0]] = activity[1]
 
                         for player in players:
-                            player["total_checks"] = len(decoded_arch["locations"][player["slot"]])
+                            checks = len(decoded_arch["locations"][player["slot"]])
+                            player["total_checks"] = checks
+                            total_checks += checks
 
                             player_tuple = decoded_arch["connect_names"][player["name"]] # Gives in format of (team#, slot#)
 
                             location_checks = decoded_apsave.get("location_checks", {})
-                            player["checks_found"] = len(location_checks.get(player_tuple, set()))
+                            checked = len(location_checks.get(player_tuple, set()))
+                            player["checks_found"] = checked
+                            total_checked += checked
 
                             if player_tuple in player_activity:
                                 timediff = (datetime.now() - datetime.fromtimestamp(player_activity[player_tuple]))
@@ -252,7 +262,13 @@ def multiworld_data():
 
                                 player["last_activity"] = f"{hours:02}:{minutes:02}:{seconds:02}"
 
+                                if recent_activity_dt > timediff:
+                                    recent_activity = f"{hours:02}:{minutes:02}:{seconds:02}"
+                                    recent_activity_dt = timediff
+
                                 player["status"] = decoded_apsave['client_game_state'][player_tuple]
+                                if player["status"] == 30:
+                                    games_complete += 1
                             else:
                                 player["last_activity"] = "None"
                                 player["status"] = 0
@@ -261,12 +277,17 @@ def multiworld_data():
         
         if not apsave:
             for player in players:
-                player["total_checks"] = len(decoded_arch["locations"][player["slot"]])
+                checks = len(decoded_arch["locations"][player["slot"]])
+                player["total_checks"] = checks
+                total_checks += checks
+
                 player["checks_found"] = 0
                 player["last_activity"] = "None"
                 player["status"] = 0
+    
+    totals = {"total_checks": total_checks, "total_checked": total_checked, "games_complete": games_complete, "num_players": len(players), "recent_activity": recent_activity}
 
-    return jsonify({"players": players})
+    return jsonify({"players": players, "totals": totals})
 
 
 @app.route("/spheres")
