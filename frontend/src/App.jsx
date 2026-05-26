@@ -3,6 +3,7 @@ import Home from "./pages/Home"
 import Room from "./pages/Room"
 import Log from "./pages/Log"
 import Multitracker from "./pages/Multitracker"
+import Sphere from "./pages/Sphere"
 
 function App() {
   return (
@@ -12,6 +13,7 @@ function App() {
         <Route path="/room" element={<Room />} />
         <Route path="/log" element={<Log />} />
         <Route path="/multitracker" element={<Multitracker />} />
+        <Route path="/spheres" element={<Sphere />} />
       </Routes>
     </BrowserRouter>
   )

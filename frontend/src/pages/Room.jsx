@@ -93,6 +93,9 @@ function Room() {
             <div>
                 <Link to="/multitracker">Multiworld Tracker</Link>
             </div>
+            <div>
+                <Link to="/spheres">Sphere Tracker</Link>
+            </div>
             {
                 players.length > 0 ? (
                     <div>
