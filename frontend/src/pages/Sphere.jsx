@@ -42,7 +42,7 @@ function Sphere() {
                             <tbody>
                                 {sphereData.map(item => (
                                     <tr>
-                                        <td>0</td>
+                                        <td>{item.sphere}</td>
                                         <td>{item.from}</td>
                                         <td>{item.to}</td>
                                         <td>{item.item_name}</td>

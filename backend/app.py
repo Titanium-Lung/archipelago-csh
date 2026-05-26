@@ -21,14 +21,14 @@ SERVER_PORT = 38281
 running_process = None
 extract_folder_path = None
 arch_file_path = None
-ids = {}
+location_info = {}
 
 @app.route("/upload", methods=["POST"])
 def upload_file():
     global running_process
     global arch_file_path
     global extract_folder_path
-    global ids
+    global location_info
 
     if "file" not in request.files:
         return jsonify({"error": "No file provided"}), 400
@@ -61,12 +61,32 @@ def upload_file():
     with open(arch_file_path, "rb") as f:
         data = f.read()
         decoded_arch = restricted_loads(zlib.decompress(data[1:]))
+
+        ids = {}
         for game in decoded_arch["datapackage"]:
             subdict = decoded_arch["datapackage"][game]
             ids[game] = {}
             ids[game]['id_to_item_name'] = {v: k for k, v in subdict['item_name_to_id'].items()}
             ids[game]['id_to_location_name'] = {v: k for k, v in subdict['location_name_to_id'].items()}
+        
+        sphere_num = 1
+        for sphere in decoded_arch["spheres"]:
+            for slot in sphere:
+                slotinfo = decoded_arch["slot_info"][slot]
+                for location_id in sphere[slot]:
+                    location_info[location_id] = {}
 
+                    location_info[location_id]["sphere"] = sphere_num
+                    location_info[location_id]["from"] = slotinfo.name
+                    location_info[location_id]["game"] = slotinfo.game
+
+                    location_tuple = decoded_arch["locations"][slot][location_id] # format is: (item_id, receiver_slot_id, unknown#)
+                    location_info[location_id]["to"] = decoded_arch["slot_info"][location_tuple[1]].name
+                    location_info[location_id]["location_name"] = ids[slotinfo.game]['id_to_location_name'][location_id]
+                    location_info[location_id]["item_name"] = ids[decoded_arch["slot_info"][location_tuple[1]].game]['id_to_item_name'][location_tuple[0]]
+            sphere_num+=1
+        
+        print(location_info)
 
     if running_process is not None:
         running_process.terminate()
@@ -236,8 +256,6 @@ def multiworld_data():
                             else:
                                 player["last_activity"] = "None"
                                 player["status"] = 0
-                                
-
                         
                         apsave = True
         
@@ -246,6 +264,7 @@ def multiworld_data():
                 player["total_checks"] = len(decoded_arch["locations"][player["slot"]])
                 player["checks_found"] = 0
                 player["last_activity"] = "None"
+                player["status"] = 0
 
     return jsonify({"players": players})
 
@@ -255,16 +274,7 @@ def sphere_items():
     if running_process is None:
         return jsonify({"error": "No archipelago server running"}), 404
     
-    if arch_file_path is None:
-        return jsonify({"error": "No file uploaded"}), 404
-
-    with open(arch_file_path, "rb") as f:
-        data = f.read()
-    
-    decoded_arch = restricted_loads(zlib.decompress(data[1:]))
-
     items = []
-
     with os.scandir(extract_folder_path) as folder:
         for file in folder:
             if file.is_file():
@@ -273,19 +283,9 @@ def sphere_items():
                         decoded_apsave = restricted_loads(zlib.decompress(f.read()))
 
                         for key in decoded_apsave["location_checks"]: # key is (team#, slotid) tuple
-                            slotinfo = decoded_arch["slot_info"][key[1]]
                             for location_id in decoded_apsave["location_checks"][key]:
-                                item = {}
-                                # item["sphere"] = 
-                                item["from"] = slotinfo.name
-                                location_tuple = decoded_arch["locations"][key[1]][location_id] # format is: (item_id, receiver_slot_id, unknown#)
-                                item["to"] = decoded_arch["slot_info"][location_tuple[1]].name
-                                item["game"] = slotinfo.game
-                                item["location_name"] = ids[slotinfo.game]['id_to_location_name'][location_id]
-                                item["item_name"] = ids[decoded_arch["slot_info"][location_tuple[1]].game]['id_to_item_name'][location_tuple[0]]
-
+                                item = location_info[location_id]
                                 items.append(item)
-    print(items)
     
     return jsonify({"items": items})
 
