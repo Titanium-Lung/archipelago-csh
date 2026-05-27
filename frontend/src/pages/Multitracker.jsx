@@ -3,6 +3,7 @@ import { useEffect, useState } from "react"
 function Multitracker() {
     const [players, setPlayers] = useState([])
     const [totals, setTotals] = useState({})
+    const [hints, setHints] = useState([])
 
     useEffect(() => {
         async function fetchMultiworld() {
@@ -16,6 +17,7 @@ function Multitracker() {
                 console.log("Successfully fetched")
                 setPlayers(result.players)
                 setTotals(result.totals)
+                setHints(result.hints)
             }
         }
         fetchMultiworld()
@@ -77,6 +79,50 @@ function Multitracker() {
                 ) : (
                     <div>
                         <p>Populating players</p>
+                    </div>
+                )
+            }
+            <h2>Hints</h2>
+            {
+                hints.length > 0 ? (
+                    <div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Finder</th>
+                                    <th>Receiver</th>
+                                    <th>Item</th>
+                                    <th>Location</th>
+                                    <th>Game</th>
+                                    <th>Entrance</th>
+                                    <th>Found</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {hints.map(hint => (
+                                    <tr>
+                                        <td>{hint.finding_player}</td>
+                                        <td>{hint.receiving_player}</td>
+                                        <td>{hint.item}</td>
+                                        <td>{hint.location}</td>
+                                        <td>{hint.game}</td>
+                                        <td>{hint.entrance}</td>
+                                        <td>
+                                            {
+                                                {
+                                                    true: "Yes",
+                                                    false: "No",
+                                                }[hint.found] ?? "?"
+                                            }
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                ) : (
+                    <div>
+                        <p>Populating hints</p>
                     </div>
                 )
             }

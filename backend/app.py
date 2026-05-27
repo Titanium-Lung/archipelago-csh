@@ -85,8 +85,6 @@ def upload_file():
                     location_info[location_id]["location_name"] = ids[slotinfo.game]['id_to_location_name'][location_id]
                     location_info[location_id]["item_name"] = ids[decoded_arch["slot_info"][location_tuple[1]].game]['id_to_item_name'][location_tuple[0]]
             sphere_num+=1
-        
-        print(location_info)
 
     if running_process is not None:
         running_process.terminate()
@@ -220,6 +218,8 @@ def multiworld_data():
         for slot_id, info, in decoded_arch["slot_info"].items()
     ]
 
+    hints = []
+
     total_checks = 0
     total_checked = 0
     games_complete = 0
@@ -234,7 +234,7 @@ def multiworld_data():
                     with open(file.path, "rb") as f:
                         decoded_apsave = restricted_loads(zlib.decompress(f.read()))
 
-                        # with open("sample_apsave.txt", "w") as f:
+                        # with open("sample ap files/sample_apsave.txt", "w") as f:
                         #     f.write(str(decoded_apsave))
 
                         player_activity = {}
@@ -273,6 +273,23 @@ def multiworld_data():
                                 player["last_activity"] = "None"
                                 player["status"] = 0
                         
+                        for player in decoded_apsave["hints"]:
+                            for hint_info in decoded_apsave["hints"][player]:
+                                if hint_info.receiving_player == player[1]:
+                                    hint = {}
+                                    hint["location"] = location_info[hint_info.location]["location_name"]
+                                    hint["receiving_player"] = location_info[hint_info.location]["to"]
+                                    hint["finding_player"] = location_info[hint_info.location]["from"]
+                                    hint["item"] = location_info[hint_info.location]["item_name"]
+                                    hint["game"] = location_info[hint_info.location]["game"]
+                                    if hint_info.entrance.strip():
+                                        hint["entrance"] = hint_info.entrance
+                                    else:
+                                        hint["entrance"] = "Vanilla"
+                                    hint["found"] = hint_info.found
+
+                                    hints.append(hint)
+                        
                         apsave = True
         
         if not apsave:
@@ -287,7 +304,7 @@ def multiworld_data():
     
     totals = {"total_checks": total_checks, "total_checked": total_checked, "games_complete": games_complete, "num_players": len(players), "recent_activity": recent_activity}
 
-    return jsonify({"players": players, "totals": totals})
+    return jsonify({"players": players, "totals": totals, "hints": hints})
 
 
 @app.route("/spheres")
