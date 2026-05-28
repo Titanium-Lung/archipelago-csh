@@ -22,6 +22,8 @@ running_process = None
 extract_folder_path = None
 arch_file_path = None
 location_info = {}
+ids = {}
+slotinfos = {}
 
 @app.route("/upload", methods=["POST"])
 def upload_file():
@@ -29,6 +31,7 @@ def upload_file():
     global arch_file_path
     global extract_folder_path
     global location_info
+    global ids
 
     if "file" not in request.files:
         return jsonify({"error": "No file provided"}), 400
@@ -73,6 +76,7 @@ def upload_file():
         for sphere in decoded_arch["spheres"]:
             for slot in sphere:
                 slotinfo = decoded_arch["slot_info"][slot]
+                slotinfos[slot] = slotinfo
                 for location_id in sphere[slot]:
                     location_info[location_id] = {}
 
@@ -265,12 +269,14 @@ def multiworld_data():
                                 if recent_activity_dt > timediff:
                                     recent_activity = f"{hours:02}:{minutes:02}:{seconds:02}"
                                     recent_activity_dt = timediff
-
-                                player["status"] = decoded_apsave['client_game_state'][player_tuple]
+                            else:
+                                player["last_activity"] = "None"
+                            
+                            if player_tuple in decoded_apsave["client_game_state"]:
+                                player["status"] = decoded_apsave["client_game_state"][player_tuple]
                                 if player["status"] == 30:
                                     games_complete += 1
                             else:
-                                player["last_activity"] = "None"
                                 player["status"] = 0
                         
                         for player in decoded_apsave["hints"]:
@@ -306,6 +312,32 @@ def multiworld_data():
 
     return jsonify({"players": players, "totals": totals, "hints": hints})
 
+@app.route("/tracker/<int:slot>")
+def individual_tracker_items(slot):
+    if running_process is None:
+        return jsonify({"error": "No archipelago server running"}), 404
+    
+    items = {}
+    with os.scandir(extract_folder_path) as folder:
+        for file in folder:
+            if file.is_file():
+                if file.name.endswith(".apsave"):
+                    with open(file.path, "rb") as f:
+                        decoded_apsave = restricted_loads(zlib.decompress(f.read()))
+
+                        count = 1
+                        if (0, slot, True) in decoded_apsave["received_items"]:
+                            for item_info in decoded_apsave["received_items"][(0, slot, True)]: # hard codes team name to 0
+                                item_name = ids[slotinfos[slot].game]["id_to_item_name"][item_info.item]
+                                if item_name in items:
+                                    items[item_name]["count"] += 1
+                                else:
+                                    items[item_name] = {}
+                                    items[item_name]["count"] = 1
+                                items[item_name]["last_order_received"] = count
+                                count+=1
+    
+    return jsonify({"items": items})
 
 @app.route("/spheres")
 def sphere_items():

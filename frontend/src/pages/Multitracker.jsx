@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { Link } from "react-router-dom"
 
 function Multitracker() {
     const [players, setPlayers] = useState([])
@@ -45,7 +46,7 @@ function Multitracker() {
                             <tbody>
                                 {players.map(player => (
                                     <tr>
-                                        <td>{player.slot}</td>
+                                        <td><Link to={`/tracker/${player.slot}`}>{player.slot}</Link></td>
                                         <td>{player.name}</td>
                                         <td>{player.game}</td>
                                         <td>

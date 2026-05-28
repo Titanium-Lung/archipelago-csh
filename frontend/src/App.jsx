@@ -4,6 +4,7 @@ import Room from "./pages/Room"
 import Log from "./pages/Log"
 import Multitracker from "./pages/Multitracker"
 import Sphere from "./pages/Sphere"
+import Tracker from "./pages/Tracker"
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
         <Route path="/log" element={<Log />} />
         <Route path="/multitracker" element={<Multitracker />} />
         <Route path="/spheres" element={<Sphere />} />
+        <Route path="/tracker/:slot" element={<Tracker />} />
       </Routes>
     </BrowserRouter>
   )
