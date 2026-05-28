@@ -316,8 +316,18 @@ def multiworld_data():
 def individual_tracker_items(slot):
     if running_process is None:
         return jsonify({"error": "No archipelago server running"}), 404
+
+    if arch_file_path is None:
+        return jsonify({"error": "No file uploaded"}), 404
+
+    with open(arch_file_path, "rb") as f:
+        data = f.read()
+    
+    decoded_arch = restricted_loads(zlib.decompress(data[1:]))
     
     items = {}
+    locations = []
+    hints = []
     with os.scandir(extract_folder_path) as folder:
         for file in folder:
             if file.is_file():
@@ -327,7 +337,7 @@ def individual_tracker_items(slot):
 
                         count = 1
                         if (0, slot, True) in decoded_apsave["received_items"]:
-                            for item_info in decoded_apsave["received_items"][(0, slot, True)]: # hard codes team name to 0
+                            for item_info in decoded_apsave["received_items"][(0, slot, True)]: # hard codes team number to 0
                                 item_name = ids[slotinfos[slot].game]["id_to_item_name"][item_info.item]
                                 if item_name in items:
                                     items[item_name]["count"] += 1
@@ -336,8 +346,36 @@ def individual_tracker_items(slot):
                                     items[item_name]["count"] = 1
                                 items[item_name]["last_order_received"] = count
                                 count+=1
+                        
+                        for location_num in decoded_arch["locations"][slot]:
+                            location = {}
+                            location["name"] = location_info[location_num]["location_name"]
+                            if (0, slot) in decoded_apsave["location_checks"]:
+                                if location_num in decoded_apsave["location_checks"][(0, slot)]:
+                                    location["checked"] = True
+                                else:
+                                    location["checked"] = False
+                            else:
+                                location["checked"] = False
+                            locations.append(location)
+                        
+                        if (0, slot) in decoded_apsave["hints"]:
+                            for hint_info in decoded_apsave["hints"][(0, slot)]: # Hard codes team to 0
+                                hint = {}
+                                hint["location"] = location_info[hint_info.location]["location_name"]
+                                hint["receiving_player"] = location_info[hint_info.location]["to"]
+                                hint["finding_player"] = location_info[hint_info.location]["from"]
+                                hint["item"] = location_info[hint_info.location]["item_name"]
+                                hint["game"] = location_info[hint_info.location]["game"]
+                                if hint_info.entrance.strip():
+                                    hint["entrance"] = hint_info.entrance
+                                else:
+                                    hint["entrance"] = "Vanilla"
+                                hint["found"] = hint_info.found
+
+                                hints.append(hint)
     
-    return jsonify({"items": items})
+    return jsonify({"items": items, "locations": locations, "hints": hints})
 
 @app.route("/spheres")
 def sphere_items():
