@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 
 function Log() {
+    const navigate = useNavigate()
     const [log, setLog] = useState(["Populating log..."])
 
     useEffect(() => {
@@ -21,13 +22,17 @@ function Log() {
         return () => clearInterval(interval)
     }, [])
 
+    function sendToPage(url) {
+        navigate(url)
+    }
+
     return (
-        <div class="log">
-            <Link to="/room">Back to room</Link>
+        <div className="m-3">
+            <button className="btn btn-primary" style={{marginBottom: '10px'}} onClick={() => sendToPage("/room")}>Back to room</button>
             <h2>Log</h2>
                 <div>
                     {log.map((line, index) => (
-                        <p key={index}>{line}</p>
+                        <p style={{margin: '0'}} key={index}>{line}</p>
                     ))}
                 </div>
         </div>

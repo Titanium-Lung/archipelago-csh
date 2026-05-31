@@ -7,6 +7,7 @@ import threading
 import sys
 import zlib
 import zipfile
+import math
 from datetime import datetime
 sys.path.insert(0, "Archipelago-0.6.7")
 from Utils import restricted_loads
@@ -257,6 +258,8 @@ def multiworld_data():
                             player["checks_found"] = checked
                             total_checked += checked
 
+                            player["percent_checked"] = checked/checks
+
                             if player_tuple in player_activity:
                                 timediff = (datetime.now() - datetime.fromtimestamp(player_activity[player_tuple]))
                                 total_seconds = int(timediff.total_seconds())
@@ -265,12 +268,14 @@ def multiworld_data():
                                 seconds = total_seconds % 60
 
                                 player["last_activity"] = f"{hours:02}:{minutes:02}:{seconds:02}"
+                                player["last_activity_num"] = total_seconds
 
                                 if recent_activity_dt > timediff:
                                     recent_activity = f"{hours:02}:{minutes:02}:{seconds:02}"
                                     recent_activity_dt = timediff
                             else:
                                 player["last_activity"] = "None"
+                                player["last_activity_num"] = 2147483647
                             
                             if player_tuple in decoded_apsave["client_game_state"]:
                                 player["status"] = decoded_apsave["client_game_state"][player_tuple]
@@ -306,6 +311,7 @@ def multiworld_data():
 
                 player["checks_found"] = 0
                 player["last_activity"] = "None"
+                player["last_activity_num"] = 2147483647
                 player["status"] = 0
     
     totals = {"total_checks": total_checks, "total_checked": total_checked, "games_complete": games_complete, "num_players": len(players), "recent_activity": recent_activity}

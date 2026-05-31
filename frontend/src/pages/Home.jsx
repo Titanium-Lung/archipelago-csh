@@ -1,6 +1,5 @@
 import { useState } from "react"
-import { useNavigate } from "react-router-dom"
-import { Link } from "react-router-dom"
+import { useNavigate, Link } from "react-router-dom"
 import logo from "../assets/CSH Archipelago Logo.svg"
 
 function Home() {
@@ -61,7 +60,7 @@ function Home() {
 
                     <ul className="navbar-nav me-auto">
                         <li className="nav-item active">
-                            <a className="nav-link" href="/">Home <span className="sr-only">(current)</span></a>
+                            <a className="nav-link" href="/">Home</a>
                         </li>
                         <li className="nav-item">
                             <a className="nav-link" href="https://github.com/Titanium-Lung/archipelago-csh">Github</a>
@@ -97,7 +96,7 @@ function Home() {
                     port != "" && (
                     <div>
                         <p>Port: {port}</p> 
-                        <button className="btn btn-primary" onClick={sendToRoom}>Go to room</button>
+                        <button className="btn btn-success" onClick={sendToRoom}>Go to room</button>
                     </div>
                     )
                 }
