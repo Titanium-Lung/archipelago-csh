@@ -134,7 +134,7 @@ function Tracker() {
 
     return (
         <div>
-            <nav className="navbar navbar-expand-lg navbar-dark bg-primary px-3 px-md-5 mb-4">
+            <nav className="navbar navbar-expand-lg navbar-dark navbar-sticky bg-primary px-3 px-md-5 mb-4">
                 <a className="navbar-brand" href="/">
                     <img src={logo} style={{ height: "40px", width: "auto" }} /> Archipelago Host
                 </a>
@@ -169,8 +169,11 @@ function Tracker() {
                     </ul>
                 </div>
             </nav>
+            <div className="mx-md-5">
+                <button className="btn btn-primary" onClick={sendToMultiTracker}>Back to Multiworld Tracker</button>
+            </div>
             <h1 style={{textAlign: 'center'}}>Individual Tracker</h1>
-            <div className="d-flex justify-content-center mx-md-5">
+            <div className="d-flex justify-content-center mx-md-5 table-contained">
                 <table className="table table-bordered table-hover">
                     <thead>
                         <tr className="table table-primary">
@@ -193,7 +196,7 @@ function Tracker() {
             <h2 style={{textAlign: 'center'}}>Location checks</h2>
             {
                 locations.length > 0 ? (
-                    <div className="d-flex justify-content-center mx-md-5">
+                    <div className="d-flex justify-content-center mx-md-5 table-contained">
                         <table className="table table-bordered table-hover">
                             <thead>
                                 <tr className="table table-primary">
@@ -225,7 +228,7 @@ function Tracker() {
                 )
             }
             <h2 style={{textAlign: 'center'}}>Hints</h2>
-            <div className="d-flex justify-content-center mx-md-5">
+            <div className="d-flex justify-content-center mx-md-5 table-contained">
                 <table className="table table-bordered table-hover">
                     <thead>
                         <tr className="table table-primary">
@@ -259,9 +262,6 @@ function Tracker() {
                         ))}
                     </tbody>
                 </table>
-            </div>
-            <div style={{textAlign: 'center', paddingBottom: '20px'}}>
-                <button className="btn btn-primary" onClick={sendToMultiTracker}>Back to Multiworld Tracker</button>
             </div>
         </div>
     )

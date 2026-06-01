@@ -48,7 +48,7 @@ function Home() {
 
     return (
         <div>
-            <nav className="navbar navbar-expand-lg navbar-dark bg-primary px-3 px-md-5 mb-4">
+            <nav className="navbar navbar-expand-lg navbar-dark navbar-sticky bg-primary px-3 px-md-5 mb-4">
                 <a className="navbar-brand" href="/">
                     <img src={logo} style={{ height: "40px", width: "auto" }} /> Archipelago Host
                 </a>

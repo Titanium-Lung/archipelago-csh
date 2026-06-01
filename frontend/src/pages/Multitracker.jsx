@@ -86,7 +86,7 @@ function Multitracker() {
 
     return (
         <div>
-            <nav className="navbar navbar-expand-lg navbar-dark bg-primary px-3 px-md-5 mb-4">
+            <nav className="navbar navbar-expand-lg navbar-dark navbar-sticky bg-primary px-3 px-md-5 mb-4">
                 <a className="navbar-brand" href="/">
                     <img src={logo} style={{ height: "40px", width: "auto" }} /> Archipelago Host
                 </a>
@@ -180,7 +180,7 @@ function Multitracker() {
             <h2 style={{textAlign: 'center'}}>Hints</h2>
             {
                 hints.length > 0 ? (
-                    <div className="d-flex justify-content-center mx-md-5">
+                    <div className="d-flex justify-content-center mx-md-5 table-contained">
                         <table className="table table-bordered table-hover">
                             <thead>
                                 <tr className="table-primary">
