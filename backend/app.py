@@ -319,7 +319,7 @@ def multiworld_data():
     return jsonify({"players": players, "totals": totals, "hints": hints})
 
 @app.route("/tracker/<int:slot>")
-def individual_tracker_items(slot):
+def individual_tracker_data(slot):
     if running_process is None:
         return jsonify({"error": "No archipelago server running"}), 404
 

@@ -145,7 +145,7 @@ function Room() {
                     <div className="d-flex justify-content-center mx-md-5">
                         <table className="table table-bordered">
                             <thead>
-                                <tr>
+                                <tr className="table-primary">
                                     <th>Id</th>
                                     <th>Name</th>
                                     <th>Game</th>

@@ -41,6 +41,7 @@ function Multitracker() {
             localStorage.setItem("gamesSortDirection", gamesSortDirection)
         }
     }, [gamesSortDirection])
+
     useEffect(() => {
         if (hintsSortedColumn) {
             localStorage.setItem("hintsSortedColumn", hintsSortedColumn)
@@ -215,8 +216,8 @@ function Multitracker() {
                         </table>
                     </div>
                 ) : (
-                    <div>
-                        <p>Populating hints</p>
+                    <div className="d-flex mx-md-5">
+                        <p>No hints</p>
                     </div>
                 )
             }

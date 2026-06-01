@@ -120,8 +120,8 @@ function Sphere() {
                         </table>
                     </div>
                 ) : (
-                    <div>
-                        <p>Populating sphere data...</p>
+                    <div className="d-flex justify-content-center mx-md-5">
+                        <p>No received items</p>
                     </div>
                 )
             }
