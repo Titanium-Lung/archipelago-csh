@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useNavigate, Link } from "react-router-dom"
 import logo from "../assets/CSH Archipelago Logo.svg"
 
 function Room() {
     const navigate = useNavigate()
+    const bottomRef = useRef(null)
 
     const [port, setPort] = useState("")
     const [log, setLog] = useState(["Populating log..."])
@@ -26,7 +27,7 @@ function Room() {
 
     useEffect(() => {
         async function fetchLog() {
-            const response = await fetch("http://localhost:5001/log/last", {
+            const response = await fetch("http://localhost:5001/log", {
                 method: "GET"
             })
 
@@ -55,6 +56,10 @@ function Room() {
         }
         fetchPlayers()
     }, [])
+
+    useEffect(() => {
+        bottomRef.current?.scrollIntoView()
+    }, [log])
 
     const handleKeyUp = async (event) => {
         if (event.key === 'Enter') {
@@ -183,10 +188,11 @@ function Room() {
                     <input type="text" id="input" name="Server command" placeholder="Server command" onKeyUp={handleKeyUp} style={{width: '500px', marginBottom: '10px', marginRight: '20px'}} />
                     <Link to="/log">Full log</Link>
                 </div>
-                <div style={{marginBottom: '20px'}}>
+                <div style={{marginBottom: '20px', height: '500px', overflowY: 'scroll'}}>
                     {log.map((line, index) => (
                         <p style={{margin: '0'}} key={index}>{line}</p>
                     ))}
+                    <div ref={bottomRef}></div>
                 </div>
             </div>
         </div>

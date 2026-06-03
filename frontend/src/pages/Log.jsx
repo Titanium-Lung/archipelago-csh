@@ -30,11 +30,11 @@ function Log() {
         <div className="m-3">
             <button className="btn btn-primary" style={{marginBottom: '10px'}} onClick={() => sendToPage("/room")}>Back to room</button>
             <h2>Log</h2>
-                <div>
-                    {log.map((line, index) => (
-                        <p style={{margin: '0'}} key={index}>{line}</p>
-                    ))}
-                </div>
+            <div>
+                {log.map((line, index) => (
+                    <p style={{margin: '0'}} key={index}>{line}</p>
+                ))}
+            </div>
         </div>
     )
 

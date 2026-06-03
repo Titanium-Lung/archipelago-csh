@@ -126,20 +126,6 @@ def stream_log():
 
     return jsonify(result)
 
-@app.route("/log/last")
-def stream_log_bottom():
-    if running_process is None: 
-        abort(404)
-
-    f = open("logs/serverlog.txt", "r")
-    
-    result = { 
-        "lines": f.readlines()[-25:]
-    }
-
-    return jsonify(result)
-
-
 @app.route("/room")
 def room_info():
     if running_process is None:
