@@ -58,7 +58,17 @@ function Room() {
     }, [])
 
     useEffect(() => {
-        bottomRef.current?.scrollIntoView()
+        const timer = setTimeout(() => {
+            sendServerCommand("/exit")
+        }, 7200000 /*60000*/);
+
+        return () => clearTimeout(timer)
+    }, [])
+
+    useEffect(() => {
+        if (bottomRef.current) {
+            bottomRef.current.scrollTop = bottomRef.current.scrollHeight
+        }
     }, [log])
 
     const handleKeyUp = async (event) => {
@@ -81,6 +91,20 @@ function Room() {
             }
 
             document.getElementById('input').value = ''
+        }
+    }
+
+    async function sendServerCommand(command) {
+        const response = await fetch("http://localhost:5001/command", {
+            method: "POST",
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ command: command })
+        })
+
+        const result = await response.json()
+
+        if (!response.ok) {
+            console.log("Failed to send command to server")
         }
     }
 
@@ -188,11 +212,10 @@ function Room() {
                     <input type="text" id="input" name="Server command" placeholder="Server command" onKeyUp={handleKeyUp} style={{width: '500px', marginBottom: '10px', marginRight: '20px'}} />
                     <Link to="/log">Full log</Link>
                 </div>
-                <div style={{marginBottom: '20px', height: '500px', overflowY: 'scroll'}}>
+                <div style={{marginBottom: '20px', height: '500px', overflowY: 'scroll'}} ref={bottomRef}>
                     {log.map((line, index) => (
                         <p style={{margin: '0'}} key={index}>{line}</p>
                     ))}
-                    <div ref={bottomRef}></div>
                 </div>
             </div>
         </div>

@@ -7,7 +7,6 @@ import threading
 import sys
 import zlib
 import zipfile
-import math
 from datetime import datetime
 sys.path.insert(0, "Archipelago-0.6.7")
 from Utils import restricted_loads
@@ -112,6 +111,10 @@ def upload_file():
     }
 
     return jsonify(result)
+
+@app.route("/restart")
+def restart_server():
+    pass
 
 @app.route("/log")
 def stream_log():
