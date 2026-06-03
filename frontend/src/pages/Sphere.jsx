@@ -3,8 +3,10 @@ import logo from "../assets/CSH Archipelago Logo.svg"
 
 function Sphere() {
     const [sphereData, setSphereData] = useState([])
+    const [filteredData, setFilteredData] = useState([])
     const [sortedColumn, setSortedColumn] = useState(localStorage.getItem("sortedColumn") || null)
     const [sortDirection, setSortDirection] = useState(localStorage.getItem("sortDirection") || "asc")
+    const [filter, setFilter] = useState('')
 
     useEffect(() => {
         async function fetchSpheres() {
@@ -17,6 +19,7 @@ function Sphere() {
             if (response.ok) {
                 console.log("Successfully fetched")
                 setSphereData(result.items)
+                setFilteredData(result.items)
             }
         }
         fetchSpheres()
@@ -44,11 +47,28 @@ function Sphere() {
         }
     }
 
-    const sortedSpheres = sortedColumn ? [...sphereData].sort((a, b) => {
+    useEffect(() => {
+        const filteredSpheres = []
+
+        sphereData.forEach((item) => {
+            if (item["item_name"].toLowerCase().includes(filter.toLowerCase()) ||
+                    item["location_name"].toLowerCase().includes(filter.toLowerCase()) ||
+                    String(item["sphere"]).includes(filter.toLowerCase()) ||
+                    item["from"].toLowerCase().includes(filter.toLowerCase()) ||
+                    item["to"].toLowerCase().includes(filter.toLowerCase()) ||
+                    item["game"].toLowerCase().includes(filter.toLowerCase())) {
+                filteredSpheres.push(item)
+            }
+        })
+
+        setFilteredData(filteredSpheres)
+    }, [filter])
+
+    const sortedSpheres = sortedColumn ? [...filteredData].sort((a, b) => {
         if (a[sortedColumn] < b[sortedColumn]) return sortDirection === "asc" ? -1 : 1
         if (a[sortedColumn] > b[sortedColumn]) return sortDirection === "asc" ? 1 : -1
         return 0
-    }) : sphereData
+    }) : filteredData
 
     return (
         <div>
@@ -91,6 +111,9 @@ function Sphere() {
             <p className="mx-3">This tracker lists already found locations by their logical access sphere. 
                 It ignores items that cannot be sent and will therefore differ from the sphere numbers in the spoiler playthrough.
                 This tracker will automatically update itself periodically.</p>
+            <div className="mx-md-5 m-3">
+                <input type="text" id="input" name="search" placeholder="Search" value={filter} onChange={e => setFilter(e.target.value)} />
+            </div>
             {
                 sphereData.length > 0 ? (
                     <div className="d-flex justify-content-center mx-md-5">

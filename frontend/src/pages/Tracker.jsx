@@ -16,6 +16,13 @@ function Tracker() {
     const [hintsSortedColumn, setHintsSortedColumn] = useState(localStorage.getItem("hintsSortedColumn") || null)
     const [hintsSortDirection, setHintsSortDirection] = useState(localStorage.getItem("hintsSortDirection") || null)
 
+    const [filteredItems, setFilteredItems] = useState([])
+    const [itemFilter, setItemFilter] = useState('')
+    const [filteredLocations, setFilteredLocations] = useState([])
+    const [locationFilter, setLocationFilter] = useState('')
+    const [filteredHints, setFilteredHints] = useState([])
+    const [filterHints, setFilterHints] = useState('')
+
     useEffect(() => {
         async function fetchItems() {
             const response = await fetch(`http://localhost:5001/tracker/${slot}`, {
@@ -39,9 +46,12 @@ function Tracker() {
                 })
                 
                 setItems(itemList)
+                setFilteredItems(itemList)
 
                 setHints(result.hints)
+                setFilteredHints(result.hints)
                 setLocations(result.locations)
+                setFilteredLocations(result.locations)
             }
         }
         fetchItems()
@@ -83,6 +93,49 @@ function Tracker() {
         }
     }, [hintsSortDirection])
 
+    useEffect(() => {
+        const filtered = []
+
+        items.forEach((item) => {
+            if (item["name"].toLowerCase().includes(itemFilter.toLowerCase()) ||
+                    String(item["count"]).toLowerCase().includes(itemFilter.toLowerCase()) ||
+                    String(item["last_order_received"]).includes(itemFilter.toLowerCase())) {
+                filtered.push(item)
+            }
+        })
+
+        setFilteredItems(filtered)
+    }, [itemFilter])
+
+    useEffect(() => {
+        const filtered = []
+
+        locations.forEach((location) => {
+            if (location["name"].toLowerCase().includes(locationFilter.toLowerCase())) {
+                filtered.push(location)
+            }
+        })
+
+        setFilteredLocations(filtered)
+    }, [locationFilter])
+
+    useEffect(() => {
+        const filteredItems = []
+
+        hints.forEach((hint) => {
+            if (hint["finding_player"].toLowerCase().includes(filterHints.toLowerCase()) ||
+                    hint["receiving_player"].toLowerCase().includes(filterHints.toLowerCase()) ||
+                    hint["item"].toLowerCase().includes(filterHints.toLowerCase()) ||
+                    hint["location"].toLowerCase().includes(filterHints.toLowerCase()) ||
+                    hint["game"].toLowerCase().includes(filterHints.toLowerCase()) ||
+                    hint["entrance"].toLowerCase().includes(filterHints.toLowerCase())) {
+                filteredItems.push(hint)
+            }
+        })
+
+        setFilteredHints(filteredItems)
+    }, [filterHints])
+
     function sendToMultiTracker() {
         navigate("/multitracker")
     }
@@ -114,23 +167,23 @@ function Tracker() {
         }
     }
 
-    const sortedItems = itemsSortedColumn ? [...items].sort((a, b) => {
+    const sortedItems = itemsSortedColumn ? [...filteredItems].sort((a, b) => {
         if (a[itemsSortedColumn] < b[itemsSortedColumn]) return itemsSortDirection === "asc" ? -1 : 1
         if (a[itemsSortedColumn] > b[itemsSortedColumn]) return itemsSortDirection === "asc" ? 1 : -1
         return 0
-    }) : items
+    }) : filteredItems
 
-    const sortedLocations = locationsSortedColumn ? [...locations].sort((a, b) => {
+    const sortedLocations = locationsSortedColumn ? [...filteredLocations].sort((a, b) => {
         if (a[locationsSortedColumn] < b[locationsSortedColumn]) return locationsSortDirection === "asc" ? -1 : 1
         if (a[locationsSortedColumn] > b[locationsSortedColumn]) return locationsSortDirection === "asc" ? 1 : -1
         return 0
-    }) : locations
+    }) : filteredLocations
 
-    const sortedHints = hintsSortedColumn ? [...hints].sort((a, b) => {
+    const sortedHints = hintsSortedColumn ? [...filteredHints].sort((a, b) => {
         if (a[hintsSortedColumn] < b[hintsSortedColumn]) return hintsSortDirection === "asc" ? -1 : 1
         if (a[hintsSortedColumn] > b[hintsSortedColumn]) return hintsSortDirection === "asc" ? 1 : -1
         return 0
-    }) : hints
+    }) : filteredHints
 
     return (
         <div>
@@ -173,6 +226,9 @@ function Tracker() {
                 <button className="btn btn-primary" onClick={sendToMultiTracker}>Back to Multiworld Tracker</button>
             </div>
             <h1 style={{textAlign: 'center'}}>Individual Tracker</h1>
+            <div className="mx-md-5 m-3">
+                <input type="text" id="input" name="search" placeholder="Search" value={itemFilter} onChange={e => setItemFilter(e.target.value)} />
+            </div>
             <div className="d-flex justify-content-center mx-md-5 table-contained">
                 <table className="table table-bordered table-hover">
                     <thead>
@@ -193,7 +249,10 @@ function Tracker() {
                     </tbody>
                 </table>
             </div>
-            <h2 style={{textAlign: 'center'}}>Location checks</h2>
+            <h2 style={{textAlign: 'center'}}>Location Checks</h2>
+            <div className="mx-md-5 m-3">
+                <input type="text" id="input" name="search" placeholder="Search" value={locationFilter} onChange={e => setLocationFilter(e.target.value)} />
+            </div>
             {
                 locations.length > 0 ? (
                     <div className="d-flex justify-content-center mx-md-5 table-contained">
@@ -211,8 +270,8 @@ function Tracker() {
                                         <td>
                                             {
                                                 {
-                                                    true: "Yes",
-                                                    false: "No",
+                                                    true: "✔",
+                                                    false: "",
                                                 }[location.checked] ?? "?"
                                             }
                                         </td>
@@ -228,6 +287,9 @@ function Tracker() {
                 )
             }
             <h2 style={{textAlign: 'center'}}>Hints</h2>
+            <div className="mx-md-5 m-3">
+                <input type="text" id="input" name="search" placeholder="Search" value={filterHints} onChange={e => setFilterHints(e.target.value)} />
+            </div>
             <div className="d-flex justify-content-center mx-md-5 table-contained">
                 <table className="table table-bordered table-hover">
                     <thead>
@@ -253,8 +315,8 @@ function Tracker() {
                                 <td>
                                     {
                                         {
-                                            true: "Yes",
-                                            false: "No",
+                                            true: "✔",
+                                            false: "",
                                         }[hint.found] ?? "?"
                                     }
                                 </td>

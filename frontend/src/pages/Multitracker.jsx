@@ -12,6 +12,11 @@ function Multitracker() {
     const [hintsSortedColumn, setHintsSortedColumn] = useState(localStorage.getItem("hintsSortedColumn") || null)
     const [hintsSortDirection, setHintsSortDirection] = useState(localStorage.getItem("hintsSortDirection") || null)
 
+    const [filteredPlayers, setFilteredPlayers] = useState([])
+    const [filterGames, setFilterGames] = useState('')
+    const [filteredHints, setFilteredHints] = useState([])
+    const [filterHints, setFilterHints] = useState('')
+
     useEffect(() => {
         async function fetchMultiworld() {
             const response = await fetch("http://localhost:5001/tracker", {
@@ -21,10 +26,12 @@ function Multitracker() {
             const result = await response.json()
 
             if (response.ok) {
-                console.log("Successfully fetched")
+                console.log("Successfully fetched players")
                 setPlayers(result.players)
+                setFilteredPlayers(result.players)
                 setTotals(result.totals)
                 setHints(result.hints)
+                setFilteredHints(result.hints)
             }
         }
         fetchMultiworld()
@@ -54,6 +61,37 @@ function Multitracker() {
         }
     }, [hintsSortDirection])
 
+    useEffect(() => {
+        const filteredGames = []
+
+        players.forEach((player) => {
+            if (player["name"].toLowerCase().includes(filterGames.toLowerCase()) ||
+                    player["game"].toLowerCase().includes(filterGames.toLowerCase()) ||
+                    String(player["slot"]).includes(filterGames.toLowerCase())) {
+                filteredGames.push(player)
+            }
+        })
+
+        setFilteredPlayers(filteredGames)
+    }, [filterGames])
+
+    useEffect(() => {
+        const filteredItems = []
+
+        hints.forEach((hint) => {
+            if (hint["finding_player"].toLowerCase().includes(filterHints.toLowerCase()) ||
+                    hint["receiving_player"].toLowerCase().includes(filterHints.toLowerCase()) ||
+                    hint["item"].toLowerCase().includes(filterHints.toLowerCase()) ||
+                    hint["location"].toLowerCase().includes(filterHints.toLowerCase()) ||
+                    hint["game"].toLowerCase().includes(filterHints.toLowerCase()) ||
+                    hint["entrance"].toLowerCase().includes(filterHints.toLowerCase())) {
+                filteredItems.push(hint)
+            }
+        })
+
+        setFilteredHints(filteredItems)
+    }, [filterHints])
+
     function setSort(column, table) {
         if (table === "games") {
             if (gamesSortedColumn === column) {
@@ -72,17 +110,17 @@ function Multitracker() {
         }
     }
 
-    const sortedPlayers = gamesSortedColumn ? [...players].sort((a, b) => {
+    const sortedPlayers = gamesSortedColumn ? [...filteredPlayers].sort((a, b) => {
         if (a[gamesSortedColumn] < b[gamesSortedColumn]) return gamesSortDirection === "asc" ? -1 : 1
         if (a[gamesSortedColumn] > b[gamesSortedColumn]) return gamesSortDirection === "asc" ? 1 : -1
         return 0
-    }) : players
+    }) : filteredPlayers
 
-    const sortedHints = hintsSortedColumn ? [...hints].sort((a, b) => {
+    const sortedHints = hintsSortedColumn ? [...filteredHints].sort((a, b) => {
         if (a[hintsSortedColumn] < b[hintsSortedColumn]) return hintsSortDirection === "asc" ? -1 : 1
         if (a[hintsSortedColumn] > b[hintsSortedColumn]) return hintsSortDirection === "asc" ? 1 : -1
         return 0
-    }) : hints
+    }) : filteredHints
 
     return (
         <div>
@@ -122,6 +160,9 @@ function Multitracker() {
                 </div>
             </nav>
             <h1 style={{textAlign: 'center'}}>Multiworld Tracker</h1>
+            <div className="mx-md-5 m-3">
+                <input type="text" id="input" name="search" placeholder="Search" value={filterGames} onChange={e => setFilterGames(e.target.value)} />
+            </div>
             {
                 players.length > 0 ? (
                     <div className="d-flex justify-content-center mx-md-5">
@@ -178,9 +219,12 @@ function Multitracker() {
                 )
             }
             <h2 style={{textAlign: 'center'}}>Hints</h2>
+            <div className="mx-md-5 m-3">
+                <input type="text" id="input" name="search" placeholder="Search" value={filterHints} onChange={e => setFilterHints(e.target.value)} />
+            </div>
             {
                 hints.length > 0 ? (
-                    <div className="d-flex justify-content-center mx-md-5 table-contained">
+                    <div className="d-flex justify-content-center mx-md-5 mb-4 table-contained">
                         <table className="table table-bordered table-hover">
                             <thead>
                                 <tr className="table-primary">
@@ -205,8 +249,8 @@ function Multitracker() {
                                         <td>
                                             {
                                                 {
-                                                    true: "Yes",
-                                                    false: "No",
+                                                    true: "✔",
+                                                    false: "",
                                                 }[hint.found] ?? "?"
                                             }
                                         </td>
