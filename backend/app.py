@@ -24,6 +24,8 @@ arch_file_path = None
 location_info = {}
 ids = {}
 slotinfos = {}
+running = False
+stop_event = threading.Event()
 
 @app.route("/upload", methods=["POST"])
 def upload_file():
@@ -32,6 +34,8 @@ def upload_file():
     global extract_folder_path
     global location_info
     global ids
+    global running
+    global stop_event
 
     if "file" not in request.files:
         return jsonify({"error": "No file provided"}), 400
@@ -100,7 +104,13 @@ def upload_file():
         stdin=subprocess.PIPE,
     )
 
-    thread = threading.Thread(target=write_log, args=(running_process, "logs/serverlog.txt"))
+    running = True
+
+    with open("logs/serverlog.txt", "w") as f:
+        f.write("")
+
+    stop_event = threading.Event()
+    thread = threading.Thread(target=write_log, args=(running_process, "logs/serverlog.txt", stop_event))
     thread.daemon = True
     thread.start()
 
@@ -112,14 +122,51 @@ def upload_file():
 
     return jsonify(result)
 
-@app.route("/restart")
+@app.route("/restart", methods=["PUT"])
 def restart_server():
-    pass
+    global running_process
+    global running
+    global stop_event
+
+    if running_process is None:
+        return jsonify({"message": "no server to restart"})
+
+    if not running:
+        if running_process is not None:
+            running_process.terminate()
+            stop_event.set()
+        
+        running_process = subprocess.Popen(
+            ["Archipelago-0.6.7/venv/bin/python3", ARCHIPELAGO_SERVER, arch_file_path, f"--port={SERVER_PORT}"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            stdin=subprocess.PIPE,
+        )
+
+        running = True
+
+        stop_event = threading.Event()
+        thread = threading.Thread(target=write_log, args=(running_process, "logs/serverlog.txt", stop_event))
+        thread.daemon = True
+        thread.start()
+
+        result = {
+            "message": "Server started",
+            "port": SERVER_PORT
+        }
+
+        return jsonify(result)
+    else:
+        result = {
+            "message": "Server already running"
+        }
+
+        return jsonify(result)
 
 @app.route("/log")
 def stream_log():
     if running_process is None: 
-        return
+        return jsonify({"error": "no archipelago server running"}), 404
 
     f = open("logs/serverlog.txt", "r")
     
@@ -140,10 +187,14 @@ def room_info():
     
 @app.route("/command", methods=["POST"])
 def server_command():
+    global running
+
     if running_process is None:
         abort(404)
     else:
         data = request.get_json()
+        if data.get('command') == "/exit":
+            running = False
         running_process.stdin.write((data.get('command') + '\n').encode())
         running_process.stdin.flush()
         return jsonify({"message":"ok"})
@@ -394,9 +445,11 @@ def sphere_items():
 
 
 
-def write_log(process, filepath):
-    with open(filepath, "w") as f:
+def write_log(process, filepath, stop_event):
+    with open(filepath, "a") as f:
         for line in process.stdout:
+            if stop_event.is_set():
+                break
             f.write(line.decode())
             f.flush()
 

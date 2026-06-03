@@ -58,6 +58,21 @@ function Room() {
     }, [])
 
     useEffect(() => {
+        async function restartServer() {
+            const response = await fetch("http://localhost:5001/restart", {
+                method: "PUT"
+            })
+
+            const result = await response.json()
+
+            if (!response.ok) {
+                console.log("An error occured")
+            }
+        }
+        restartServer()
+    }, [])
+
+    useEffect(() => {
         const timer = setTimeout(() => {
             sendServerCommand("/exit")
         }, 7200000 /*60000*/);
