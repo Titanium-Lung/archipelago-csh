@@ -73,14 +73,6 @@ function Room() {
     }, [])
 
     useEffect(() => {
-        const timer = setTimeout(() => {
-            sendServerCommand("/exit")
-        }, 7200000 /*60000*/);
-
-        return () => clearTimeout(timer)
-    }, [])
-
-    useEffect(() => {
         if (bottomRef.current) {
             bottomRef.current.scrollTop = bottomRef.current.scrollHeight
         }

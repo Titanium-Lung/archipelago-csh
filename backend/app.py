@@ -18,24 +18,23 @@ UPLOAD_FOLDER = "uploads"
 ARCHIPELAGO_SERVER = "Archipelago-0.6.7/MultiServer.py"
 SERVER_PORT = 38281
 
-running_process = None
-extract_folder_path = None
-arch_file_path = None
-location_info = {}
-ids = {}
-slotinfos = {}
-running = False
-stop_event = threading.Event()
+class ServerState():
+    def __init__(self):
+        self.running_process = None
+        self.extract_folder_path = None
+        self.arch_file_path = None
+        self.location_info = {}
+        self.ids = {}
+        self.slotinfos = {}
+        self.running = False
+        self.stop_event = threading.Event()
+        self.shutdown_timer = None
+
+state = ServerState()
 
 @app.route("/upload", methods=["POST"])
 def upload_file():
-    global running_process
-    global arch_file_path
-    global extract_folder_path
-    global location_info
-    global ids
-    global running
-    global stop_event
+    global state
 
     if "file" not in request.files:
         return jsonify({"error": "No file provided"}), 400
@@ -48,7 +47,7 @@ def upload_file():
     zip_save_path = os.path.join(UPLOAD_FOLDER, file.filename)
     file.save(zip_save_path)
 
-    extract_folder_path = zip_save_path[:zip_save_path.index('.')]
+    state.extract_folder_path = zip_save_path[:zip_save_path.index('.')]
 
     filename = None
 
@@ -57,60 +56,61 @@ def upload_file():
             if name.endswith(".archipelago"):
                 filename = name
 
-        zf.extractall(path=extract_folder_path)
+        zf.extractall(path=state.extract_folder_path)
         os.remove(zip_save_path)
     
     if filename is None:
         return jsonify({"error": "No archipelago file found in zip"}), 400
 
-    arch_file_path = os.path.join(extract_folder_path, filename)
+    state.arch_file_path = os.path.join(state.extract_folder_path, filename)
 
-    with open(arch_file_path, "rb") as f:
+    with open(state.arch_file_path, "rb") as f:
         data = f.read()
         decoded_arch = restricted_loads(zlib.decompress(data[1:]))
 
-        ids = {}
+        state.ids = {}
         for game in decoded_arch["datapackage"]:
             subdict = decoded_arch["datapackage"][game]
-            ids[game] = {}
-            ids[game]['id_to_item_name'] = {v: k for k, v in subdict['item_name_to_id'].items()}
-            ids[game]['id_to_location_name'] = {v: k for k, v in subdict['location_name_to_id'].items()}
+            state.ids[game] = {}
+            state.ids[game]['id_to_item_name'] = {v: k for k, v in subdict['item_name_to_id'].items()}
+            state.ids[game]['id_to_location_name'] = {v: k for k, v in subdict['location_name_to_id'].items()}
         
         sphere_num = 1
         for sphere in decoded_arch["spheres"]:
             for slot in sphere:
                 slotinfo = decoded_arch["slot_info"][slot]
-                slotinfos[slot] = slotinfo
+                state.slotinfos[slot] = slotinfo
                 for location_id in sphere[slot]:
-                    location_info[location_id] = {}
+                    state.location_info[location_id] = {}
 
-                    location_info[location_id]["sphere"] = sphere_num
-                    location_info[location_id]["from"] = slotinfo.name
-                    location_info[location_id]["game"] = slotinfo.game
+                    state.location_info[location_id]["sphere"] = sphere_num
+                    state.location_info[location_id]["from"] = slotinfo.name
+                    state.location_info[location_id]["game"] = slotinfo.game
 
                     location_tuple = decoded_arch["locations"][slot][location_id] # format is: (item_id, receiver_slot_id, unknown#)
-                    location_info[location_id]["to"] = decoded_arch["slot_info"][location_tuple[1]].name
-                    location_info[location_id]["location_name"] = ids[slotinfo.game]['id_to_location_name'][location_id]
-                    location_info[location_id]["item_name"] = ids[decoded_arch["slot_info"][location_tuple[1]].game]['id_to_item_name'][location_tuple[0]]
+                    state.location_info[location_id]["to"] = decoded_arch["slot_info"][location_tuple[1]].name
+                    state.location_info[location_id]["location_name"] = state.ids[slotinfo.game]['id_to_location_name'][location_id]
+                    state.location_info[location_id]["item_name"] = state.ids[decoded_arch["slot_info"][location_tuple[1]].game]['id_to_item_name'][location_tuple[0]]
             sphere_num+=1
 
-    if running_process is not None:
-        running_process.terminate()
+    if state.running_process is not None:
+        state.running_process.terminate()
     
-    running_process = subprocess.Popen(
-        ["Archipelago-0.6.7/venv/bin/python3", ARCHIPELAGO_SERVER, arch_file_path, f"--port={SERVER_PORT}"],
+    state.running_process = subprocess.Popen(
+        ["Archipelago-0.6.7/venv/bin/python3", ARCHIPELAGO_SERVER, state.arch_file_path, f"--port={SERVER_PORT}"],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         stdin=subprocess.PIPE,
     )
 
-    running = True
+    state.running = True
+    reset_timer()
 
     with open("logs/serverlog.txt", "w") as f:
         f.write("")
 
-    stop_event = threading.Event()
-    thread = threading.Thread(target=write_log, args=(running_process, "logs/serverlog.txt", stop_event))
+    state.stop_event = threading.Event()
+    thread = threading.Thread(target=write_log, args=(state.running_process, "logs/serverlog.txt", state.stop_event))
     thread.daemon = True
     thread.start()
 
@@ -124,29 +124,28 @@ def upload_file():
 
 @app.route("/restart", methods=["PUT"])
 def restart_server():
-    global running_process
-    global running
-    global stop_event
+    global state
 
-    if running_process is None:
+    if state.running_process is None:
         return jsonify({"message": "no server to restart"})
 
-    if not running:
-        if running_process is not None:
-            running_process.terminate()
-            stop_event.set()
+    if not state.running:
+        if state.running_process is not None:
+            state.running_process.terminate()
+            state.stop_event.set()
         
-        running_process = subprocess.Popen(
-            ["Archipelago-0.6.7/venv/bin/python3", ARCHIPELAGO_SERVER, arch_file_path, f"--port={SERVER_PORT}"],
+        state.running_process = subprocess.Popen(
+            ["Archipelago-0.6.7/venv/bin/python3", ARCHIPELAGO_SERVER, state.arch_file_path, f"--port={SERVER_PORT}"],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             stdin=subprocess.PIPE,
         )
 
-        running = True
+        state.running = True
+        reset_timer()
 
-        stop_event = threading.Event()
-        thread = threading.Thread(target=write_log, args=(running_process, "logs/serverlog.txt", stop_event))
+        state.stop_event = threading.Event()
+        thread = threading.Thread(target=write_log, args=(state.running_process, "logs/serverlog.txt", state.stop_event))
         thread.daemon = True
         thread.start()
 
@@ -157,6 +156,8 @@ def restart_server():
 
         return jsonify(result)
     else:
+        reset_timer()
+
         result = {
             "message": "Server already running"
         }
@@ -165,7 +166,7 @@ def restart_server():
 
 @app.route("/log")
 def stream_log():
-    if running_process is None: 
+    if state.running_process is None: 
         return jsonify({"error": "no archipelago server running"}), 404
 
     f = open("logs/serverlog.txt", "r")
@@ -178,7 +179,7 @@ def stream_log():
 
 @app.route("/room")
 def room_info():
-    if running_process is None:
+    if state.running_process is None:
         abort(404)
     else:
         return jsonify({
@@ -187,27 +188,28 @@ def room_info():
     
 @app.route("/command", methods=["POST"])
 def server_command():
-    global running
+    global state
 
-    if running_process is None:
+    if state.running_process is None:
         abort(404)
     else:
         data = request.get_json()
         if data.get('command') == "/exit":
-            running = False
-        running_process.stdin.write((data.get('command') + '\n').encode())
-        running_process.stdin.flush()
+            state.running = False
+            state.shutdown_timer.cancel()
+        state.running_process.stdin.write((data.get('command') + '\n').encode())
+        state.running_process.stdin.flush()
         return jsonify({"message":"ok"})
     
 @app.route("/players")
 def get_players():
-    if running_process is None:
+    if state.running_process is None:
         return jsonify({"error": "No archipelago server running"}), 404
     
-    if arch_file_path is None:
+    if state.arch_file_path is None:
         return jsonify({"error": "No file uploaded"}), 404
 
-    with open(arch_file_path, "rb") as f:
+    with open(state.arch_file_path, "rb") as f:
         data = f.read()
     
     decoded = restricted_loads(zlib.decompress(data[1:]))
@@ -217,7 +219,7 @@ def get_players():
         for slot_id, info, in decoded["slot_info"].items()
     ]
 
-    with os.scandir(extract_folder_path) as folder:
+    with os.scandir(state.extract_folder_path) as folder:
         for file in folder:
             if file.is_file():
                 if "P" in file.name[2:]:
@@ -238,22 +240,22 @@ def get_players():
 
 @app.route("/players/<filename>")
 def send_patch_file(filename):
-    if running_process is None:
+    if state.running_process is None:
         return jsonify({"error": "No archipelago server running"}), 404
     
-    filepath = os.path.join(extract_folder_path, filename)
+    filepath = os.path.join(state.extract_folder_path, filename)
 
     return send_file(filepath)
 
 @app.route("/tracker")
 def multiworld_data():
-    if running_process is None:
+    if state.running_process is None:
         return jsonify({"error": "No archipelago server running"}), 404
     
-    if arch_file_path is None:
+    if state.arch_file_path is None:
         return jsonify({"error": "No file uploaded"}), 404
 
-    with open(arch_file_path, "rb") as f:
+    with open(state.arch_file_path, "rb") as f:
         data = f.read()
     
     decoded_arch = restricted_loads(zlib.decompress(data[1:]))
@@ -271,7 +273,7 @@ def multiworld_data():
     recent_activity = "None"
     recent_activity_dt = (datetime.now() - datetime.fromtimestamp(0))
 
-    with os.scandir(extract_folder_path) as folder:
+    with os.scandir(state.extract_folder_path) as folder:
         apsave = False
         for file in folder:
             if file.is_file():
@@ -328,11 +330,11 @@ def multiworld_data():
                             for hint_info in decoded_apsave["hints"][player]:
                                 if hint_info.receiving_player == player[1]:
                                     hint = {}
-                                    hint["location"] = location_info[hint_info.location]["location_name"]
-                                    hint["receiving_player"] = location_info[hint_info.location]["to"]
-                                    hint["finding_player"] = location_info[hint_info.location]["from"]
-                                    hint["item"] = location_info[hint_info.location]["item_name"]
-                                    hint["game"] = location_info[hint_info.location]["game"]
+                                    hint["location"] = state.location_info[hint_info.location]["location_name"]
+                                    hint["receiving_player"] = state.location_info[hint_info.location]["to"]
+                                    hint["finding_player"] = state.location_info[hint_info.location]["from"]
+                                    hint["item"] = state.location_info[hint_info.location]["item_name"]
+                                    hint["game"] = state.location_info[hint_info.location]["game"]
                                     if hint_info.entrance.strip():
                                         hint["entrance"] = hint_info.entrance
                                     else:
@@ -360,13 +362,13 @@ def multiworld_data():
 
 @app.route("/tracker/<int:slot>")
 def individual_tracker_data(slot):
-    if running_process is None:
+    if state.running_process is None:
         return jsonify({"error": "No archipelago server running"}), 404
 
-    if arch_file_path is None:
+    if state.arch_file_path is None:
         return jsonify({"error": "No file uploaded"}), 404
 
-    with open(arch_file_path, "rb") as f:
+    with open(state.arch_file_path, "rb") as f:
         data = f.read()
     
     decoded_arch = restricted_loads(zlib.decompress(data[1:]))
@@ -374,7 +376,7 @@ def individual_tracker_data(slot):
     items = {}
     locations = []
     hints = []
-    with os.scandir(extract_folder_path) as folder:
+    with os.scandir(state.extract_folder_path) as folder:
         for file in folder:
             if file.is_file():
                 if file.name.endswith(".apsave"):
@@ -384,7 +386,7 @@ def individual_tracker_data(slot):
                         count = 1
                         if (0, slot, True) in decoded_apsave["received_items"]:
                             for item_info in decoded_apsave["received_items"][(0, slot, True)]: # hard codes team number to 0
-                                item_name = ids[slotinfos[slot].game]["id_to_item_name"][item_info.item]
+                                item_name = state.ids[state.slotinfos[slot].game]["id_to_item_name"][item_info.item]
                                 if item_name in items:
                                     items[item_name]["count"] += 1
                                 else:
@@ -395,7 +397,7 @@ def individual_tracker_data(slot):
                         
                         for location_num in decoded_arch["locations"][slot]:
                             location = {}
-                            location["name"] = location_info[location_num]["location_name"]
+                            location["name"] = state.location_info[location_num]["location_name"]
                             if (0, slot) in decoded_apsave["location_checks"]:
                                 if location_num in decoded_apsave["location_checks"][(0, slot)]:
                                     location["checked"] = True
@@ -408,11 +410,11 @@ def individual_tracker_data(slot):
                         if (0, slot) in decoded_apsave["hints"]:
                             for hint_info in decoded_apsave["hints"][(0, slot)]: # Hard codes team to 0
                                 hint = {}
-                                hint["location"] = location_info[hint_info.location]["location_name"]
-                                hint["receiving_player"] = location_info[hint_info.location]["to"]
-                                hint["finding_player"] = location_info[hint_info.location]["from"]
-                                hint["item"] = location_info[hint_info.location]["item_name"]
-                                hint["game"] = location_info[hint_info.location]["game"]
+                                hint["location"] = state.location_info[hint_info.location]["location_name"]
+                                hint["receiving_player"] = state.location_info[hint_info.location]["to"]
+                                hint["finding_player"] = state.location_info[hint_info.location]["from"]
+                                hint["item"] = state.location_info[hint_info.location]["item_name"]
+                                hint["game"] = state.location_info[hint_info.location]["game"]
                                 if hint_info.entrance.strip():
                                     hint["entrance"] = hint_info.entrance
                                 else:
@@ -425,11 +427,11 @@ def individual_tracker_data(slot):
 
 @app.route("/spheres")
 def sphere_items():
-    if running_process is None:
+    if state.running_process is None:
         return jsonify({"error": "No archipelago server running"}), 404
     
     items = []
-    with os.scandir(extract_folder_path) as folder:
+    with os.scandir(state.extract_folder_path) as folder:
         for file in folder:
             if file.is_file():
                 if file.name.endswith(".apsave"):
@@ -438,7 +440,7 @@ def sphere_items():
 
                         for key in decoded_apsave["location_checks"]: # key is (team#, slotid) tuple
                             for location_id in decoded_apsave["location_checks"][key]:
-                                item = location_info[location_id]
+                                item = state.location_info[location_id]
                                 items.append(item)
     
     return jsonify({"items": items})
@@ -453,12 +455,29 @@ def write_log(process, filepath, stop_event):
             f.write(line.decode())
             f.flush()
 
+def reset_timer():
+    global state
+    if state.shutdown_timer is not None:
+        state.shutdown_timer.cancel()
+    state.shutdown_timer = threading.Timer(7200, shutdown_server) 
+    state.shutdown_timer.daemon = True
+    state.shutdown_timer.start()
+
+def shutdown_server():
+    global state
+    if state.running_process is not None:
+        state.running_process.stdin.write(("/exit\n").encode())
+        state.running_process.stdin.flush()
+        state.running = False
+
 def cleanup():
-    global running_process
-    if running_process is not None:
+    global state
+    if state.running_process is not None:
         print("Shutting down Archipelago Server...")
-        running_process.terminate()
-        running_process.wait()
+        state.running_process.terminate()
+        state.running_process.wait()
+    if state.shutdown_timer is not None:
+        state.shutdown_timer.cancel()
 
 atexit.register(cleanup)
 
