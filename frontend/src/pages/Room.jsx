@@ -11,6 +11,21 @@ function Room() {
     const [players, setPlayers] = useState([])
 
     useEffect(() => {
+        async function restartServer() {
+            const response = await fetch("http://localhost:5001/restart", {
+                method: "PUT"
+            })
+
+            const result = await response.json()
+
+            if (!response.ok) {
+                console.log("An error occured")
+            }
+        }
+        restartServer()
+    }, [])
+
+    useEffect(() => {
         async function fetchPort() {
             const response = await fetch("http://localhost:5001/room", {
                 method: "GET"
@@ -55,21 +70,6 @@ function Room() {
             }
         }
         fetchPlayers()
-    }, [])
-
-    useEffect(() => {
-        async function restartServer() {
-            const response = await fetch("http://localhost:5001/restart", {
-                method: "PUT"
-            })
-
-            const result = await response.json()
-
-            if (!response.ok) {
-                console.log("An error occured")
-            }
-        }
-        restartServer()
     }, [])
 
     useEffect(() => {

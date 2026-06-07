@@ -7,6 +7,8 @@ import threading
 import sys
 import zlib
 import zipfile
+import socket
+import time
 from datetime import datetime
 sys.path.insert(0, "Archipelago-0.6.7")
 from Utils import restricted_loads
@@ -17,6 +19,7 @@ CORS(app, resources={r"/*": {"origins": "http://localhost:5173"}})
 UPLOAD_FOLDER = "uploads"
 ARCHIPELAGO_SERVER = "Archipelago-0.6.7/MultiServer.py"
 SERVER_PORT = 38281
+SHUTDOWN_TIME = 7200
 
 class ServerState():
     def __init__(self):
@@ -26,9 +29,7 @@ class ServerState():
         self.location_info = {}
         self.ids = {}
         self.slotinfos = {}
-        self.running = False
-        self.stop_event = threading.Event()
-        self.shutdown_timer = None
+        self.restarting = False
 
 state = ServerState()
 
@@ -97,20 +98,16 @@ def upload_file():
         state.running_process.terminate()
     
     state.running_process = subprocess.Popen(
-        ["Archipelago-0.6.7/venv/bin/python3", ARCHIPELAGO_SERVER, state.arch_file_path, f"--port={SERVER_PORT}"],
+        ["Archipelago-0.6.7/venv/bin/python3", ARCHIPELAGO_SERVER, state.arch_file_path, f"--port={SERVER_PORT}", f"--auto_shutdown={SHUTDOWN_TIME}"],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         stdin=subprocess.PIPE,
     )
 
-    state.running = True
-    reset_timer()
-
     with open("logs/serverlog.txt", "w") as f:
         f.write("")
 
-    state.stop_event = threading.Event()
-    thread = threading.Thread(target=write_log, args=(state.running_process, "logs/serverlog.txt", state.stop_event))
+    thread = threading.Thread(target=write_log, args=(state.running_process, "logs/serverlog.txt"))
     thread.daemon = True
     thread.start()
 
@@ -126,26 +123,28 @@ def upload_file():
 def restart_server():
     global state
 
+    if state.arch_file_path is None:
+        return jsonify({"message": "no server to restart"}), 404
+    
     if state.running_process is None:
-        return jsonify({"message": "no server to restart"})
-
-    if not state.running:
-        if state.running_process is not None:
-            state.running_process.terminate()
-            state.stop_event.set()
+        if state.restarting:
+            return jsonify({"message": "Server is already restarting"}), 400
+        
+        state.restarting = True
+        
+        if not wait_for_free_port(SERVER_PORT):
+            print("Timed out while waiting for port")
+            state.restarting = False
+            return jsonify({"error": "Timed out while waiting for port"}), 500
         
         state.running_process = subprocess.Popen(
-            ["Archipelago-0.6.7/venv/bin/python3", ARCHIPELAGO_SERVER, state.arch_file_path, f"--port={SERVER_PORT}"],
+            ["Archipelago-0.6.7/venv/bin/python3", ARCHIPELAGO_SERVER, state.arch_file_path, f"--port={SERVER_PORT}", f"--auto_shutdown={SHUTDOWN_TIME}"],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             stdin=subprocess.PIPE,
         )
 
-        state.running = True
-        reset_timer()
-
-        state.stop_event = threading.Event()
-        thread = threading.Thread(target=write_log, args=(state.running_process, "logs/serverlog.txt", state.stop_event))
+        thread = threading.Thread(target=write_log, args=(state.running_process, "logs/serverlog.txt"))
         thread.daemon = True
         thread.start()
 
@@ -154,10 +153,10 @@ def restart_server():
             "port": SERVER_PORT
         }
 
+        state.restarting = False
+
         return jsonify(result)
     else:
-        reset_timer()
-
         result = {
             "message": "Server already running"
         }
@@ -166,8 +165,8 @@ def restart_server():
 
 @app.route("/log")
 def stream_log():
-    if state.running_process is None: 
-        return jsonify({"error": "no archipelago server running"}), 404
+    if state.arch_file_path is None: 
+        return jsonify({"error": "no archipelago game loaded"}), 404
 
     f = open("logs/serverlog.txt", "r")
     
@@ -179,35 +178,29 @@ def stream_log():
 
 @app.route("/room")
 def room_info():
-    if state.running_process is None:
-        abort(404)
-    else:
-        return jsonify({
-            "port": SERVER_PORT
-        })
+    if state.arch_file_path is None:
+        return jsonify({"error": "no archipelago game uploaded"}), 404
+    
+    return jsonify({
+        "port": SERVER_PORT
+    })
     
 @app.route("/command", methods=["POST"])
 def server_command():
     global state
 
     if state.running_process is None:
-        abort(404)
-    else:
-        data = request.get_json()
-        if data.get('command') == "/exit":
-            state.running = False
-            state.shutdown_timer.cancel()
-        state.running_process.stdin.write((data.get('command') + '\n').encode())
-        state.running_process.stdin.flush()
-        return jsonify({"message":"ok"})
+        return jsonify({"error": "Archipelago server not running"}), 404
+    
+    data = request.get_json()
+    state.running_process.stdin.write((data.get('command') + '\n').encode())
+    state.running_process.stdin.flush()
+    return jsonify({"message":"ok"})
     
 @app.route("/players")
 def get_players():
-    if state.running_process is None:
-        return jsonify({"error": "No archipelago server running"}), 404
-    
     if state.arch_file_path is None:
-        return jsonify({"error": "No file uploaded"}), 404
+        return jsonify({"error": "No archipelago game uploaded"}), 404
 
     with open(state.arch_file_path, "rb") as f:
         data = f.read()
@@ -240,8 +233,8 @@ def get_players():
 
 @app.route("/players/<filename>")
 def send_patch_file(filename):
-    if state.running_process is None:
-        return jsonify({"error": "No archipelago server running"}), 404
+    if state.arch_file_path is None: 
+        return jsonify({"error": "no archipelago game loaded"}), 404
     
     filepath = os.path.join(state.extract_folder_path, filename)
 
@@ -249,11 +242,8 @@ def send_patch_file(filename):
 
 @app.route("/tracker")
 def multiworld_data():
-    if state.running_process is None:
-        return jsonify({"error": "No archipelago server running"}), 404
-    
-    if state.arch_file_path is None:
-        return jsonify({"error": "No file uploaded"}), 404
+    if state.arch_file_path is None: 
+        return jsonify({"error": "no archipelago game loaded"}), 404
 
     with open(state.arch_file_path, "rb") as f:
         data = f.read()
@@ -362,11 +352,8 @@ def multiworld_data():
 
 @app.route("/tracker/<int:slot>")
 def individual_tracker_data(slot):
-    if state.running_process is None:
-        return jsonify({"error": "No archipelago server running"}), 404
-
-    if state.arch_file_path is None:
-        return jsonify({"error": "No file uploaded"}), 404
+    if state.arch_file_path is None: 
+        return jsonify({"error": "no archipelago game loaded"}), 404
 
     with open(state.arch_file_path, "rb") as f:
         data = f.read()
@@ -427,8 +414,8 @@ def individual_tracker_data(slot):
 
 @app.route("/spheres")
 def sphere_items():
-    if state.running_process is None:
-        return jsonify({"error": "No archipelago server running"}), 404
+    if state.arch_file_path is None: 
+        return jsonify({"error": "no archipelago game loaded"}), 404
     
     items = []
     with os.scandir(state.extract_folder_path) as folder:
@@ -447,28 +434,25 @@ def sphere_items():
 
 
 
-def write_log(process, filepath, stop_event):
+def write_log(process, filepath):
     with open(filepath, "a") as f:
         for line in process.stdout:
-            if stop_event.is_set():
-                break
             f.write(line.decode())
             f.flush()
 
-def reset_timer():
-    global state
-    if state.shutdown_timer is not None:
-        state.shutdown_timer.cancel()
-    state.shutdown_timer = threading.Timer(7200, shutdown_server) 
-    state.shutdown_timer.daemon = True
-    state.shutdown_timer.start()
+        state.running_process = None
 
-def shutdown_server():
-    global state
-    if state.running_process is not None:
-        state.running_process.stdin.write(("/exit\n").encode())
-        state.running_process.stdin.flush()
-        state.running = False
+def wait_for_free_port(port, timeout=10):
+    start = time.time()
+    while time.time() - start < timeout:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            try:
+                s.bind(("localhost", port))
+                return True
+            except OSError:
+                time.sleep(0.5)
+    return False
 
 def cleanup():
     global state
@@ -476,8 +460,6 @@ def cleanup():
         print("Shutting down Archipelago Server...")
         state.running_process.terminate()
         state.running_process.wait()
-    if state.shutdown_timer is not None:
-        state.shutdown_timer.cancel()
 
 atexit.register(cleanup)
 
