@@ -43,6 +43,7 @@ class ServerState():
         self.ids = {}
         self.slotinfos = {}
         self.restarting = False
+        self.admin = None
 
 state = ServerState()
 
@@ -61,7 +62,7 @@ def user_info():
     user = session.get('userinfo')
     if user is None:
         return jsonify({"error":"not logged in"}), 401
-    return jsonify({"username": user.get('preferred_username')})
+    return jsonify({"username": user.get('preferred_username'), "uuid": user.get('uuid')})
 
 @app.route("/upload", methods=["POST"])
 def upload_file():
@@ -141,6 +142,8 @@ def upload_file():
     thread.daemon = True
     thread.start()
 
+    state.admin = session.get('userinfo').get('uuid')
+
     result = {
         "message": "Server started",
         "filename": file.filename,
@@ -212,7 +215,8 @@ def room_info():
         return jsonify({"error": "no archipelago game uploaded"}), 404
     
     return jsonify({
-        "port": SERVER_PORT
+        "port": SERVER_PORT,
+        "admin": state.admin
     })
     
 @app.route("/command", methods=["POST"])

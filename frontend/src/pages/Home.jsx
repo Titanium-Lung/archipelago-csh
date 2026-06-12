@@ -27,7 +27,8 @@ function Home() {
 
             const response = await fetch("http://localhost:5001/upload", {
                 method: "POST",
-                body: formData
+                body: formData,
+                credentials: "include"
             })
 
             const result = await response.json()
@@ -76,6 +77,7 @@ function Home() {
                             <span className="caret"></span>
                             </a>
                             <div className="dropdown-menu" aria-labelledby="user01">
+                                <a className="dropdown-item" href="https://github.com/Titanium-Lung/archipelago-csh/issues">Report an issue</a>
                                 <a className="dropdown-item" href={`https://profiles.csh.rit.edu/user/${user?.username}`}>Profile</a>
                                 <div className="dropdown-divider"></div>
                                 <a className="dropdown-item" href="http://localhost:5001/logout">Logout</a>

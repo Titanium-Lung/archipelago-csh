@@ -11,6 +11,7 @@ function Room() {
     const [port, setPort] = useState("")
     const [log, setLog] = useState(["Populating log..."])
     const [players, setPlayers] = useState([])
+    const [admin, setAdmin] = useState('')
 
     useEffect(() => {
         async function restartServer() {
@@ -28,7 +29,7 @@ function Room() {
     }, [])
 
     useEffect(() => {
-        async function fetchPort() {
+        async function fetchRoom() {
             const response = await fetch("http://localhost:5001/room", {
                 method: "GET"
             })
@@ -37,9 +38,10 @@ function Room() {
 
             if (response.ok) {
                 setPort(result.port)
+                setAdmin(result.admin)
             } 
         }
-        fetchPort()
+        fetchRoom()
     }, [])
 
     useEffect(() => {
@@ -149,6 +151,7 @@ function Room() {
                             <span className="caret"></span>
                             </a>
                             <div className="dropdown-menu" aria-labelledby="user01">
+                                <a className="dropdown-item" href="https://github.com/Titanium-Lung/archipelago-csh/issues">Report an issue</a>
                                 <a className="dropdown-item" href={`https://profiles.csh.rit.edu/user/${user?.username}`}>Profile</a>
                                 <div className="dropdown-divider"></div>
                                 <a className="dropdown-item" href="http://localhost:5001/logout">Logout</a>
@@ -216,10 +219,16 @@ function Room() {
                 )
             }
             <div className="mx-md-5">
-                <div>
-                    <input type="text" id="input" name="Server command" placeholder="Server command" onKeyUp={handleKeyUp} style={{width: '500px', marginBottom: '10px', marginRight: '20px'}} />
-                    <Link to="/log">Full log</Link>
-                </div>
+                {
+                    admin === user?.uuid ? (
+                        <div>
+                            <input type="text" id="input" name="Server command" placeholder="Server command" onKeyUp={handleKeyUp} style={{width: '500px', marginBottom: '10px', marginRight: '20px'}} />
+                            <Link to="/log">Full log</Link>
+                        </div>
+                    ) : (
+                        <div></div>
+                    )
+                }
                 <div style={{marginBottom: '20px', height: '500px', overflowY: 'scroll'}} ref={bottomRef}>
                     {log.map((line, index) => (
                         <p style={{margin: '0'}} key={index}>{line}</p>
