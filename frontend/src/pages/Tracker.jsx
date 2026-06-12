@@ -1,9 +1,12 @@
 import { useParams, Link, useNavigate } from "react-router-dom"
 import { useEffect, useState } from "react"
+import { useUser } from "../UserContext"
 import logo from "../assets/CSH Archipelago Logo.svg"
 
 function Tracker() {
     const navigate = useNavigate()
+    const user = useUser()
+
     const { slot } = useParams()
     const [items, setItems] = useState([])
     const [hints, setHints] = useState([])
@@ -208,13 +211,12 @@ function Tracker() {
                     <ul className="nav navbar-nav">
                         <li className="nav-item navbar-user dropdown">
                             <a className="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" id="user01">
-                            <img src="https://profiles.csh.rit.edu/image/test"/>
-                            Testing Tester
+                            <img src={`https://profiles.csh.rit.edu/image/${user?.username}`} style={{ height: "40px", width: "auto", padding: "5px"}} className="rounded-circle"/>
+                            {user?.username}
                             <span className="caret"></span>
                             </a>
                             <div className="dropdown-menu" aria-labelledby="user01">
-                                <a className="dropdown-item" href="#">Profile</a>
-                                <a className="dropdown-item" href="#">Settings</a>
+                                <a className="dropdown-item" href={`https://profiles.csh.rit.edu/user/${user?.username}`}>Profile</a>
                                 <div className="dropdown-divider"></div>
                                 <a className="dropdown-item" href="#">Logout</a>
                             </div>

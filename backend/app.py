@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, abort, send_file
+from flask import Flask, request, jsonify, send_file, redirect, session
 from flask_cors import CORS
 import os
 import subprocess
@@ -10,11 +10,24 @@ import zipfile
 import socket
 import time
 from datetime import datetime
+from flask_pyoidc.flask_pyoidc import OIDCAuthentication
+from flask_pyoidc.provider_configuration import ProviderConfiguration, ClientMetadata
 sys.path.insert(0, "Archipelago-0.6.7")
-from Utils import restricted_loads
+from Utils import restricted_loads # type: ignore
+from dotenv import load_dotenv
+load_dotenv()
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "http://localhost:5173"}})
+CORS(app, resources={r"/*": {"origins": "http://localhost:5173"}}, supports_credentials=True)
+
+app.config.from_pyfile(os.path.join(os.getcwd(), 'config.env.py'))
+
+app.secret_key = app.config['SECRET_KEY']
+
+_CONFIG = ProviderConfiguration(
+    app.config['OIDC_ISSUER'],
+    client_metadata=ClientMetadata(**app.config['OIDC_CLIENT_CONFIG']))
+_AUTH = OIDCAuthentication({'default': _CONFIG}, app)
 
 UPLOAD_FOLDER = "uploads"
 ARCHIPELAGO_SERVER = "Archipelago-0.6.7/MultiServer.py"
@@ -32,6 +45,18 @@ class ServerState():
         self.restarting = False
 
 state = ServerState()
+
+@app.route("/login")
+@_AUTH.oidc_auth('default')
+def login():
+    return redirect("http://localhost:5173")
+
+@app.route("/user")
+def user_info():
+    user = session.get('userinfo')
+    if user is None:
+        return jsonify({"error":"not logged in"}), 401
+    return jsonify({"username": user.get('preferred_username')})
 
 @app.route("/upload", methods=["POST"])
 def upload_file():
