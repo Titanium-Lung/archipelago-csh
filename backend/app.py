@@ -10,11 +10,11 @@ import zipfile
 import socket
 import time
 from datetime import datetime
-from flask_pyoidc.flask_pyoidc import OIDCAuthentication
-from flask_pyoidc.provider_configuration import ProviderConfiguration, ClientMetadata
+from flask_pyoidc.flask_pyoidc import OIDCAuthentication # type: ignore
+from flask_pyoidc.provider_configuration import ProviderConfiguration, ClientMetadata # type: ignore
 sys.path.insert(0, "Archipelago-0.6.7")
 from Utils import restricted_loads # type: ignore
-from dotenv import load_dotenv
+from dotenv import load_dotenv # type: ignore
 load_dotenv()
 
 app = Flask(__name__)
@@ -49,6 +49,11 @@ state = ServerState()
 @app.route("/login")
 @_AUTH.oidc_auth('default')
 def login():
+    return redirect("http://localhost:5173")
+
+@app.route("/logout")
+@_AUTH.oidc_logout
+def logout():
     return redirect("http://localhost:5173")
 
 @app.route("/user")

@@ -155,7 +155,7 @@ function Multitracker() {
                             <div className="dropdown-menu" aria-labelledby="user01">
                                 <a className="dropdown-item" href={`https://profiles.csh.rit.edu/user/${user?.username}`}>Profile</a>
                                 <div className="dropdown-divider"></div>
-                                <a className="dropdown-item" href="#">Logout</a>
+                                <a className="dropdown-item" href="http://localhost:5001/logout">Logout</a>
                             </div>
                         </li>
                     </ul>
