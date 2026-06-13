@@ -6,6 +6,7 @@ import Log from "./pages/Log"
 import Multitracker from "./pages/Multitracker"
 import Sphere from "./pages/Sphere"
 import Tracker from "./pages/Tracker"
+import Login from "./pages/Login"
 import { UserProvider } from "./UserContext"
 
 function App() {
@@ -19,6 +20,7 @@ function App() {
           <Route path="/multitracker" element={<Multitracker />} />
           <Route path="/spheres" element={<Sphere />} />
           <Route path="/tracker/:slot" element={<Tracker />} />
+          <Route path="/login" element={<Login />} />
         </Routes>
       </BrowserRouter>
     </UserProvider>
