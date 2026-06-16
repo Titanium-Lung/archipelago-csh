@@ -13,8 +13,8 @@ export function UserProvider({ children }) {
             if (response.ok) {
                 const data = await response.json()
                 setUser(data)
-            } else {
-                window.location.href = "http://localhost:5001/login"
+            } else if (window.location.pathname !== '/login') {
+                window.location.href = "http://localhost:5173/login"
             }
         }
         fetchUser()
