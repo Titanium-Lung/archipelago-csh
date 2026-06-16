@@ -27,7 +27,12 @@ app.secret_key = app.config['SECRET_KEY']
 _CONFIG = ProviderConfiguration(
     app.config['OIDC_ISSUER'],
     client_metadata=ClientMetadata(**app.config['OIDC_CLIENT_CONFIG']))
-_AUTH = OIDCAuthentication({'default': _CONFIG}, app)
+
+_GOOGLE_CONFIG = ProviderConfiguration(
+    issuer="https://accounts.google.com",
+    client_metadata=ClientMetadata(**app.config['GOOGLE_CLIENT_CONFIG']))
+
+_AUTH = OIDCAuthentication({'default': _CONFIG, 'google': _GOOGLE_CONFIG}, app)
 
 UPLOAD_FOLDER = "uploads"
 ARCHIPELAGO_SERVER = "Archipelago-0.6.7/MultiServer.py"
@@ -52,6 +57,11 @@ state = ServerState()
 def login():
     return redirect("http://localhost:5173")
 
+@app.route("/googlelogin")
+@_AUTH.oidc_auth('google')
+def google_login():
+    return redirect("http://localhost:5173")
+
 @app.route("/logout")
 @_AUTH.oidc_logout
 def logout():
@@ -62,7 +72,10 @@ def user_info():
     user = session.get('userinfo')
     if user is None:
         return jsonify({"error":"not logged in"}), 401
-    return jsonify({"username": user.get('preferred_username'), "uuid": user.get('uuid')})
+    print(user)
+    username = user.get('preferred_username') or user.get('name')
+    uuid = user.get('uuid') or ""
+    return jsonify({"username": username, "uuid": uuid})
 
 @app.route("/upload", methods=["POST"])
 def upload_file():

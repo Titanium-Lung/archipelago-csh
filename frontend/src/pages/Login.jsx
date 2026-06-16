@@ -1,4 +1,5 @@
 import logo from "../assets/CSH Archipelago Logo.svg"
+import google_logo from "../assets/Google_logo.svg"
 import csh_logo from "../assets/CSH_logo.png"
 
 function Login() {
@@ -25,13 +26,17 @@ function Login() {
                     </ul>
                 </div>
             </nav>
-            <div>
-                <div className="text-center">
+            <div className="row justify-content-center mt-5">
+                <div className="col-auto text-center">
                     <h2>Login with CSH</h2>
-                </div>
-                <div>
                     <a href="http://localhost:5001/login">
-                        <img src={csh_logo} style={{ width: "400px" }} className="rounded mx-auto d-block" alt="CSH logo" />
+                        <img src={csh_logo} style={{ width: "400px" }} className="rounded" alt="CSH logo" />
+                    </a>
+                </div>
+                <div className="col-auto text-center" style={{ margin: "0 100px"}}>
+                    <h2>Login with Google</h2>
+                    <a href="http://localhost:5001/googlelogin">
+                        <img src={google_logo} style={{ width: "400px" }} alt="Google logo" />
                     </a>
                 </div>
             </div>

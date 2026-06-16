@@ -14,3 +14,8 @@ OIDC_CLIENT_CONFIG = {
     'client_id': os.environ.get('OIDC_CLIENT_ID', ''),
     'client_secret': os.environ.get('OIDC_CLIENT_SECRET', ''),
 }
+
+GOOGLE_CLIENT_CONFIG = {
+    'client_id': os.environ.get('GOOGLE_CLIENT_ID', ''),
+    'client_secret': os.environ.get('GOOGLE_CLIENT_SECRET', ''),
+}
