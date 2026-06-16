@@ -211,7 +211,7 @@ function Tracker() {
                     <ul className="nav navbar-nav">
                         <li className="nav-item navbar-user dropdown">
                             <a className="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" id="user01">
-                            <img src={`https://profiles.csh.rit.edu/image/${user?.username}`} style={{ height: "40px", width: "auto", padding: "5px"}} className="rounded-circle"/>
+                            <img src={user?.picture_url} style={{ height: "40px", width: "auto", padding: "5px"}} className="rounded-circle"/>
                             {user?.username}
                             <span className="caret"></span>
                             </a>

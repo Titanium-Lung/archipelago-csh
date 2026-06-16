@@ -30,7 +30,10 @@ _CONFIG = ProviderConfiguration(
 
 _GOOGLE_CONFIG = ProviderConfiguration(
     issuer="https://accounts.google.com",
-    client_metadata=ClientMetadata(**app.config['GOOGLE_CLIENT_CONFIG']))
+    client_metadata=ClientMetadata(**app.config['GOOGLE_CLIENT_CONFIG']),
+    auth_request_params={
+        'scope': ['profile']
+    })
 
 _AUTH = OIDCAuthentication({'default': _CONFIG, 'google': _GOOGLE_CONFIG}, app)
 
@@ -72,10 +75,10 @@ def user_info():
     user = session.get('userinfo')
     if user is None:
         return jsonify({"error":"not logged in"}), 401
-    print(user)
     username = user.get('preferred_username') or user.get('name')
-    uuid = user.get('uuid') or ""
-    return jsonify({"username": username, "uuid": uuid})
+    uuid = user.get('uuid') or user.get('sub')
+    picture_url = user.get('picture') or "https://profiles.csh.rit.edu/image/"+username
+    return jsonify({"username": username, "uuid": uuid, "picture_url": picture_url})
 
 @app.route("/upload", methods=["POST"])
 def upload_file():
