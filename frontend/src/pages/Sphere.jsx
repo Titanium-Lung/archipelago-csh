@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react"
+import { useParams } from "react-router-dom"
 import { useUser } from "../UserContext"
 import logo from "../assets/CSH Archipelago Logo.svg"
 
 function Sphere() {
+    const { roomId } = useParams()
     const user = useUser()
 
     const [sphereData, setSphereData] = useState([])
@@ -13,7 +15,7 @@ function Sphere() {
 
     useEffect(() => {
         async function fetchSpheres() {
-            const response = await fetch("http://localhost:5001/spheres", {
+            const response = await fetch(`http://localhost:5001/spheres/${roomId}`, {
                 method: "GET"
             })
 

@@ -9,6 +9,8 @@ import zlib
 import zipfile
 import socket
 import time
+import uuid
+import random
 from datetime import datetime
 from flask_pyoidc.flask_pyoidc import OIDCAuthentication # type: ignore
 from flask_pyoidc.provider_configuration import ProviderConfiguration, ClientMetadata # type: ignore
@@ -42,6 +44,8 @@ ARCHIPELAGO_SERVER = "Archipelago-0.6.7/MultiServer.py"
 SERVER_PORT = 38281
 SHUTDOWN_TIME = 7200
 
+rooms = {}
+
 class ServerState():
     def __init__(self):
         self.running_process = None
@@ -50,10 +54,9 @@ class ServerState():
         self.location_info = {}
         self.ids = {}
         self.slotinfos = {}
+        self.port = None
         self.restarting = False
         self.admin = None
-
-state = ServerState()
 
 @app.route("/login")
 @_AUTH.oidc_auth('default')
@@ -85,7 +88,7 @@ def user_info():
 @app.route("/upload", methods=["POST"])
 @_AUTH.oidc_auth('default')
 def upload_file():
-    global state
+    global rooms
 
     if "file" not in request.files:
         return jsonify({"error": "No file provided"}), 400
@@ -97,6 +100,9 @@ def upload_file():
 
     zip_save_path = os.path.join(UPLOAD_FOLDER, file.filename)
     file.save(zip_save_path)
+
+    room_id = str(uuid.uuid4())
+    state = ServerState()
 
     state.extract_folder_path = zip_save_path[:zip_save_path.index('.')]
 
@@ -146,34 +152,71 @@ def upload_file():
 
     if state.running_process is not None:
         state.running_process.terminate()
+
+    ports = random.sample(range(SERVER_PORT, SERVER_PORT+200), 99)
+    for port in ports:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            try:
+                s.bind(("localhost", port))
+                print(f"Port is {port}")
+                state.port = port
+                break
+            except OSError:
+                print(f"Failed to bind port: {port}")
+                continue
+    
+    if state.port is None:
+        return jsonify({"error": "error finding port"}), 500
     
     state.running_process = subprocess.Popen(
-        ["Archipelago-0.6.7/venv/bin/python3", ARCHIPELAGO_SERVER, state.arch_file_path, f"--port={SERVER_PORT}", f"--auto_shutdown={SHUTDOWN_TIME}"],
+        ["Archipelago-0.6.7/venv/bin/python3", ARCHIPELAGO_SERVER, state.arch_file_path, f"--port={state.port}", f"--auto_shutdown={SHUTDOWN_TIME}"],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         stdin=subprocess.PIPE,
     )
 
-    with open("logs/serverlog.txt", "w") as f:
+    logpath = f"logs/{room_id}log.txt"
+
+    with open(logpath, "w") as f:
         f.write("")
 
-    thread = threading.Thread(target=write_log, args=(state.running_process, "logs/serverlog.txt"))
+    thread = threading.Thread(target=write_log, args=(state.running_process, logpath, room_id))
     thread.daemon = True
     thread.start()
 
     state.admin = session.get('userinfo').get('uuid')
 
+    rooms[room_id] = state
+
     result = {
         "message": "Server started",
         "filename": file.filename,
-        "port": SERVER_PORT
+        "port": state.port,
+        "room_id": room_id
     }
 
     return jsonify(result)
 
-@app.route("/restart", methods=["PUT"])
-def restart_server():
-    global state
+@app.route("/rooms")
+def get_all_rooms():
+    current_rooms = []
+    
+    for room_id in rooms:
+        room_info = {}
+        room_info['room_id'] = room_id
+        room_info['port'] = rooms[room_id].port
+        # room_info['admin'] = 
+        current_rooms.append(room_info)
+    
+    return jsonify({"rooms": current_rooms})
+
+@app.route("/restart/<room_id>", methods=["PUT"])
+def restart_server(room_id):
+    if room_id not in rooms:
+        return jsonify({"error": "invalid room id"}), 404
+
+    state = rooms[room_id]
 
     if state.arch_file_path is None:
         return jsonify({"message": "no server to restart"}), 404
@@ -184,25 +227,46 @@ def restart_server():
         
         state.restarting = True
         
-        if not wait_for_free_port(SERVER_PORT):
+        if not wait_for_free_port(state.port):
             print("Timed out while waiting for port")
             state.restarting = False
             return jsonify({"error": "Timed out while waiting for port"}), 500
         
+        ports = [state.port]
+        first = True
+        for port in ports:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                try:
+                    s.bind(("localhost", port))
+                    print(f"Port is {port}")
+                    state.port = port
+                except OSError:
+                    print(f"Failed to bind port {port}")
+                    state.port = None
+                    if first:
+                        ports = ports + random.sample(range(SERVER_PORT, SERVER_PORT+200), 99)
+                        first = False
+        
+        if state.port is None:
+            return jsonify({"error": "could not find a port to restart the server on"})
+        
         state.running_process = subprocess.Popen(
-            ["Archipelago-0.6.7/venv/bin/python3", ARCHIPELAGO_SERVER, state.arch_file_path, f"--port={SERVER_PORT}", f"--auto_shutdown={SHUTDOWN_TIME}"],
+            ["Archipelago-0.6.7/venv/bin/python3", ARCHIPELAGO_SERVER, state.arch_file_path, f"--port={state.port}", f"--auto_shutdown={SHUTDOWN_TIME}"],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             stdin=subprocess.PIPE,
         )
 
-        thread = threading.Thread(target=write_log, args=(state.running_process, "logs/serverlog.txt"))
+        logpath = f"logs/{room_id}log.txt"
+
+        thread = threading.Thread(target=write_log, args=(state.running_process, logpath, room_id))
         thread.daemon = True
         thread.start()
 
         result = {
             "message": "Server started",
-            "port": SERVER_PORT
+            "port": state.port
         }
 
         state.restarting = False
@@ -215,12 +279,17 @@ def restart_server():
 
         return jsonify(result)
 
-@app.route("/log")
-def stream_log():
+@app.route("/log/<room_id>")
+def stream_log(room_id):
+    if room_id not in rooms:
+        return jsonify({"error": "No archipelago game with this id"}), 404
+
+    state = rooms[room_id]
+
     if state.arch_file_path is None: 
         return jsonify({"error": "no archipelago game loaded"}), 404
 
-    f = open("logs/serverlog.txt", "r")
+    f = open(f"logs/{room_id}log.txt", "r")
     
     result = { 
         "lines": f.readlines()
@@ -228,20 +297,28 @@ def stream_log():
 
     return jsonify(result)
 
-@app.route("/room")
-def room_info():
+@app.route("/room/<room_id>")
+def room_info(room_id):
+    if room_id not in rooms:
+            return jsonify({"error": "No archipelago game with this id"}), 404
+
+    state = rooms[room_id]
+
     if state.arch_file_path is None:
         return jsonify({"error": "no archipelago game uploaded"}), 404
     
     return jsonify({
-        "port": SERVER_PORT,
+        "port": state.port,
         "admin": state.admin
     })
     
-@app.route("/command", methods=["POST"])
+@app.route("/command/<room_id>", methods=["POST"])
 @_AUTH.oidc_auth('default')
-def server_command():
-    global state
+def server_command(room_id):
+    if room_id not in rooms:
+        return jsonify({"error": "No archipelago game with this id"}), 404
+
+    state = rooms[room_id]
 
     if state.running_process is None:
         return jsonify({"error": "Archipelago server not running"}), 404
@@ -254,8 +331,13 @@ def server_command():
     state.running_process.stdin.flush()
     return jsonify({"message":"ok"})
     
-@app.route("/players")
-def get_players():
+@app.route("/players/<room_id>")
+def get_players(room_id):
+    if room_id not in rooms:
+        return jsonify({"error": "No archipelago game with this id"}), 404
+
+    state = rooms[room_id]
+
     if state.arch_file_path is None:
         return jsonify({"error": "No archipelago game uploaded"}), 404
 
@@ -273,11 +355,11 @@ def get_players():
         for file in folder:
             if file.is_file():
                 if "P" in file.name[2:]:
-                    first = file.name.index("P")
-                    second = file.name.index("P", first+1)
-                    end = file.name.index('_', second+1)
-
                     try:
+                        first = file.name.index("P")
+                        second = file.name.index("P", first+1)
+                        end = file.name.index('_', second+1)
+                    
                         patch_id = int(file.name[second+1:end])
                         for player in players:
                             if player['slot'] == patch_id:
@@ -288,8 +370,13 @@ def get_players():
 
     return jsonify({"players": players})
 
-@app.route("/players/<filename>")
-def send_patch_file(filename):
+@app.route("/players/<room_id>/<filename>")
+def send_patch_file(room_id, filename):
+    if room_id not in rooms:
+        return jsonify({"error": "No archipelago game with this id"}), 404
+
+    state = rooms[room_id]
+
     if state.arch_file_path is None: 
         return jsonify({"error": "no archipelago game loaded"}), 404
     
@@ -297,8 +384,13 @@ def send_patch_file(filename):
 
     return send_file(filepath)
 
-@app.route("/tracker")
-def multiworld_data():
+@app.route("/tracker/<room_id>")
+def multiworld_data(room_id):
+    if room_id not in rooms:
+        return jsonify({"error": "No archipelago game with this id"}), 404
+
+    state = rooms[room_id]
+
     if state.arch_file_path is None: 
         return jsonify({"error": "no archipelago game loaded"}), 404
 
@@ -407,8 +499,13 @@ def multiworld_data():
 
     return jsonify({"players": players, "totals": totals, "hints": hints})
 
-@app.route("/tracker/<int:slot>")
-def individual_tracker_data(slot):
+@app.route("/tracker/<room_id>/<int:slot>")
+def individual_tracker_data(room_id, slot):
+    if room_id not in rooms:
+        return jsonify({"error": "No archipelago game with this id"}), 404
+
+    state = rooms[room_id]
+
     if state.arch_file_path is None: 
         return jsonify({"error": "no archipelago game loaded"}), 404
 
@@ -469,8 +566,13 @@ def individual_tracker_data(slot):
     
     return jsonify({"items": items, "locations": locations, "hints": hints})
 
-@app.route("/spheres")
-def sphere_items():
+@app.route("/spheres/<room_id>")
+def sphere_items(room_id):
+    if room_id not in rooms:
+        return jsonify({"error": "No archipelago game with this id"}), 404
+
+    state = rooms[room_id]
+
     if state.arch_file_path is None: 
         return jsonify({"error": "no archipelago game loaded"}), 404
     
@@ -491,13 +593,13 @@ def sphere_items():
 
 
 
-def write_log(process, filepath):
+def write_log(process, filepath, room_id):
     with open(filepath, "a") as f:
         for line in process.stdout:
             f.write(line.decode())
             f.flush()
 
-        state.running_process = None
+        rooms[room_id].running_process = None
 
 def wait_for_free_port(port, timeout=10):
     start = time.time()
@@ -512,11 +614,13 @@ def wait_for_free_port(port, timeout=10):
     return False
 
 def cleanup():
-    global state
-    if state.running_process is not None:
-        print("Shutting down Archipelago Server...")
-        state.running_process.terminate()
-        state.running_process.wait()
+    global rooms
+    for room_id in rooms:
+        state = rooms[room_id]
+        if state.running_process is not None:
+            print(f"Shutting down Archipelago Server with id {room_id}...")
+            state.running_process.terminate()
+            state.running_process.wait()
 
 atexit.register(cleanup)
 
