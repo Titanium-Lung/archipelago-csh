@@ -88,12 +88,16 @@ function Home() {
             </nav>
             <div style={{textAlign: 'center'}}>
                 <h1>Archipelago Host</h1>
-                <div className="form-group">
-                    <input type="file" accept=".zip" onChange={handleFileChange} className="form-control-file" id="exampleInputFile" aria-describedby="fileHelp" />
-                    <button className="btn btn-primary" onClick={handleUpload}>Upload</button>
-                    <br></br>
-                    <small id="fileHelp" className="form-text text-muted">Upload the zip file of your generated multiworld</small>
-                </div>
+                {
+                    user?.csh ? (
+                        <div className="form-group">
+                            <input type="file" accept=".zip" onChange={handleFileChange} className="form-control-file" id="exampleInputFile" aria-describedby="fileHelp" />
+                            <button className="btn btn-primary" onClick={handleUpload}>Upload</button>
+                            <br></br>
+                            <small id="fileHelp" className="form-text text-muted">Upload the zip file of your generated multiworld</small>
+                        </div>
+                    ) : (<div></div>)
+                }
                 <p>{message}</p>
                 {
                     port != "" && (
@@ -103,6 +107,8 @@ function Home() {
                     </div>
                     )
                 }
+                <h2>Current Rooms</h2>
+                <p>None</p>
             </div>
         </div>
     )

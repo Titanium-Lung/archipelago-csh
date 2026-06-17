@@ -75,12 +75,15 @@ def user_info():
     user = session.get('userinfo')
     if user is None:
         return jsonify({"error":"not logged in"}), 401
-    username = user.get('preferred_username') or user.get('name')
-    uuid = user.get('uuid') or user.get('sub')
-    picture_url = user.get('picture') or "https://profiles.csh.rit.edu/image/"+username
-    return jsonify({"username": username, "uuid": uuid, "picture_url": picture_url})
+    if user.get('preferred_username'):
+        return jsonify({"username": user.get('preferred_username'), "uuid": user.get('uuid'), "picture_url": "https://profiles.csh.rit.edu/image/"+user.get('preferred_username'), "csh": True})
+    elif user.get('name'):
+        return jsonify({"username": user.get('name'), "uuid": user.get('sub'), "picture_url": user.get('picture'), "csh": False})
+    else:
+        return jsonify({"error": "could not find name"}), 400
 
 @app.route("/upload", methods=["POST"])
+@_AUTH.oidc_auth('default')
 def upload_file():
     global state
 
@@ -236,11 +239,15 @@ def room_info():
     })
     
 @app.route("/command", methods=["POST"])
+@_AUTH.oidc_auth('default')
 def server_command():
     global state
 
     if state.running_process is None:
         return jsonify({"error": "Archipelago server not running"}), 404
+
+    if session.get('userinfo').get('uuid') != state.admin:
+        return jsonify({"error": "user is not admin"}), 400
     
     data = request.get_json()
     state.running_process.stdin.write((data.get('command') + '\n').encode())

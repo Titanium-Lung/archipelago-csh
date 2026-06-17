@@ -89,7 +89,8 @@ function Room() {
                 const response = await fetch("http://localhost:5001/command", {
                     method: "POST",
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ command: event.target.value })
+                    body: JSON.stringify({ command: event.target.value }),
+                    credentials: "include"
                 })
 
                 const result = await response.json()
@@ -225,9 +226,7 @@ function Room() {
                             <input type="text" id="input" name="Server command" placeholder="Server command" onKeyUp={handleKeyUp} style={{width: '500px', marginBottom: '10px', marginRight: '20px'}} />
                             <Link to="/log">Full log</Link>
                         </div>
-                    ) : (
-                        <div></div>
-                    )
+                    ) : (<div></div>)
                 }
                 <div style={{marginBottom: '20px', height: '500px', overflowY: 'scroll'}} ref={bottomRef}>
                     {log.map((line, index) => (
