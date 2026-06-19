@@ -15,7 +15,7 @@ function Home() {
 
     useEffect(() => {
         async function fetchRooms() {
-            const response = await fetch(`http://localhost:5001/rooms`, {
+            const response = await fetch("http://localhost:5001/rooms", {
                 method: "GET"
             })
 
@@ -60,6 +60,22 @@ function Home() {
         } catch (error) {
             setMessage("Error: " + error.message)
         }
+    }
+
+    async function deleteRoom(roomId) {
+        const response = await fetch(`http://localhost:5001/delete/${roomId}`, {
+            method: "DELETE",
+            credentials: "include"
+        })
+
+        const result = await response.json()
+
+        if (response.ok) {
+            console.log(result.message)
+        } else {
+            console.log(result.error)
+        }
+        window.location.reload()
     }
 
     function sendToRoom() {
@@ -134,6 +150,8 @@ function Home() {
                                         <th>Port</th>
                                         <th>Room Page</th>
                                         <th>Multitracker</th>
+                                        <th>Start</th>
+                                        <th>Delete</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -142,6 +160,16 @@ function Home() {
                                             <td>{room.port}</td>
                                             <td><Link to={`http://localhost:5173/room/${room.room_id}`}>Room</Link></td>
                                             <td><Link to={`http://localhost:5173/multitracker/${room.room_id}`}>Tracker</Link></td>
+                                            <td>{room.start}</td>
+                                            <td>
+                                                {
+                                                    user?.uuid === room.admin_uuid ? (
+                                                        <button className="btn btn-danger" onClick={() => deleteRoom(room.room_id)}>Delete</button>
+                                                    ) : (
+                                                        <p>You can't delete this room</p>
+                                                    )
+                                                }
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>

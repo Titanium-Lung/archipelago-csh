@@ -11,6 +11,7 @@ import socket
 import time
 import uuid
 import random
+import shutil
 from datetime import datetime
 from flask_pyoidc.flask_pyoidc import OIDCAuthentication # type: ignore
 from flask_pyoidc.provider_configuration import ProviderConfiguration, ClientMetadata # type: ignore
@@ -42,6 +43,8 @@ _AUTH = OIDCAuthentication({'default': _CONFIG, 'google': _GOOGLE_CONFIG}, app)
 UPLOAD_FOLDER = "uploads"
 ARCHIPELAGO_SERVER = "Archipelago-0.6.7/MultiServer.py"
 SERVER_PORT = 38281
+PORT_RANGE = 200
+RETRY = 99
 SHUTDOWN_TIME = 7200
 
 rooms = {}
@@ -57,6 +60,7 @@ class ServerState():
         self.port = None
         self.restarting = False
         self.admin = None
+        self.start = None
 
 @app.route("/login")
 @_AUTH.oidc_auth('default')
@@ -154,10 +158,13 @@ def upload_file():
                     state.location_info[slot][location_id]["item_name"] = state.ids[decoded_arch["slot_info"][location_tuple[1]].game]['id_to_item_name'][location_tuple[0]]
             sphere_num+=1
 
+        for game in state.ids:
+            state.ids[game].pop('id_to_location_name', None)
+
     if state.running_process is not None:
         state.running_process.terminate()
 
-    ports = random.sample(range(SERVER_PORT, SERVER_PORT+200), 99)
+    ports = random.sample(range(SERVER_PORT, SERVER_PORT+PORT_RANGE), RETRY)
     for port in ports:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -190,6 +197,7 @@ def upload_file():
     thread.start()
 
     state.admin = session.get('userinfo').get('uuid')
+    state.start = datetime.now()
 
     rooms[room_id] = state
 
@@ -210,24 +218,50 @@ def get_all_rooms():
         room_info = {}
         room_info['room_id'] = room_id
         room_info['port'] = rooms[room_id].port
-        # room_info['admin'] = 
+        room_info["start"] = rooms[room_id].start.strftime('%d/%m/%y %H:%M')
+        room_info['admin_uuid'] = rooms[room_id].admin
         current_rooms.append(room_info)
     
     return jsonify({"rooms": current_rooms})
 
+@app.route("/delete/<room_id>", methods=["DELETE"])
+@_AUTH.oidc_auth('default')
+def delete_room(room_id):
+    if room_id not in rooms:
+        return jsonify({"error": "No archipelago game with this id"}), 404
+
+    state = rooms[room_id]
+
+    if session.get('userinfo').get('uuid') != state.admin:
+        return jsonify({"error": "you are not the admin of this server"}), 403
+    
+    if state.running_process is not None:
+        state.running_process.terminate()
+    
+    shutil.rmtree(state.extract_folder_path)
+
+    logpath = f"logs/{room_id}log.txt"
+
+    os.remove(logpath)
+
+    rooms.pop(room_id)
+
+    return jsonify({"message": "successfully deleted"})
+
+
 @app.route("/restart/<room_id>", methods=["PUT"])
 def restart_server(room_id):
     if room_id not in rooms:
-        return jsonify({"error": "invalid room id"}), 404
+        return jsonify({"error": "No archipelago game with this id"}), 404
 
     state = rooms[room_id]
 
     if state.arch_file_path is None:
-        return jsonify({"message": "no server to restart"}), 404
+        return jsonify({"error": "no server to restart"}), 404
     
     if state.running_process is None:
         if state.restarting:
-            return jsonify({"message": "Server is already restarting"}), 400
+            return jsonify({"error": "Server is already restarting"}), 400
         
         state.restarting = True
         
@@ -249,11 +283,11 @@ def restart_server(room_id):
                     print(f"Failed to bind port {port}")
                     state.port = None
                     if first:
-                        ports = ports + random.sample(range(SERVER_PORT, SERVER_PORT+200), 99)
+                        ports = ports + random.sample(range(SERVER_PORT, SERVER_PORT+PORT_RANGE), RETRY)
                         first = False
         
         if state.port is None:
-            return jsonify({"error": "could not find a port to restart the server on"})
+            return jsonify({"error": "could not find a port to restart the server on"}), 500
         
         state.running_process = subprocess.Popen(
             ["Archipelago-0.6.7/venv/bin/python3", ARCHIPELAGO_SERVER, state.arch_file_path, f"--port={state.port}", f"--auto_shutdown={SHUTDOWN_TIME}"],
@@ -277,11 +311,7 @@ def restart_server(room_id):
 
         return jsonify(result)
     else:
-        result = {
-            "message": "Server already running"
-        }
-
-        return jsonify(result)
+        return jsonify({"error": "server already running"}), 400
 
 @app.route("/log/<room_id>")
 def stream_log(room_id):
@@ -610,7 +640,8 @@ def write_log(process, filepath, room_id):
             f.write(line.decode())
             f.flush()
 
-        rooms[room_id].running_process = None
+        if room_id in rooms:
+            rooms[room_id].running_process = None
 
 def wait_for_free_port(port, timeout=10):
     start = time.time()
