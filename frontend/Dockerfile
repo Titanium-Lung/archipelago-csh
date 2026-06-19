@@ -1,4 +1,4 @@
-FROM node:26-slim
+FROM node:alpine as build
 
 WORKDIR /app
 
@@ -7,6 +7,10 @@ RUN npm install
 
 COPY . .
 
-EXPOSE 5173
+RUN npm run build
 
-CMD ["npm", "run", "dev", "--", "--host"]
+FROM nginxinc/nginx-unprivileged as serve
+WORKDIR /app
+COPY --from=build /app/dist /app/
+COPY nginx.conf /etc/nginx
+EXPOSE 5173
