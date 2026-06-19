@@ -533,7 +533,7 @@ def multiworld_data(room_id):
     
     totals = {"total_checks": total_checks, "total_checked": total_checked, "games_complete": games_complete, "num_players": len(players), "recent_activity": recent_activity}
 
-    return jsonify({"players": players, "totals": totals, "hints": hints})
+    return jsonify({"players": players, "totals": totals, "hints": hints, "port": state.port})
 
 @app.route("/tracker/<room_id>/<int:slot>")
 def individual_tracker_data(room_id, slot):
@@ -605,7 +605,7 @@ def individual_tracker_data(room_id, slot):
 
                                 hints.append(hint)
     
-    return jsonify({"items": items, "locations": locations, "hints": hints})
+    return jsonify({"items": items, "locations": locations, "hints": hints, "name": state.slotinfos[slot].name})
 
 @app.route("/spheres/<room_id>")
 def sphere_items(room_id):

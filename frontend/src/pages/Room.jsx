@@ -114,9 +114,10 @@ function Room() {
 
     return (
         <div>
+            <title>{`Room ${port}`}</title>
             <nav className="navbar navbar-expand-lg navbar-dark navbar-sticky bg-primary px-3 px-md-5 mb-4">
                 <a className="navbar-brand" href="/">
-                    <img src={logo} style={{ height: "40px", width: "auto" }} /> Archipelago Host
+                    <img src={logo} style={{ height: "40px", width: "auto" }} /> Archipelago
                 </a>
                 <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarColor01" aria-controls="navbarColor01" aria-expanded="false" aria-label="Toggle navigation">
                     <span className="navbar-toggler-icon"></span>
