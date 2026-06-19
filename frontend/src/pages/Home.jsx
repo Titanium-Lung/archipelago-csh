@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useNavigate, Link } from "react-router-dom"
 import { useUser } from "../UserContext"
 import logo from "../assets/CSH Archipelago Logo.svg"
@@ -7,9 +7,26 @@ function Home() {
     const navigate = useNavigate()
     const user = useUser()
 
+    const [rooms, setRooms] = useState([])
     const [file, setFile] = useState(null) 
     const [message, setMessage] = useState("")
     const [port, setPort] = useState("")
+    const [roomId, setRoomId] = useState("")
+
+    useEffect(() => {
+        async function fetchRooms() {
+            const response = await fetch(`http://localhost:5001/rooms`, {
+                method: "GET"
+            })
+
+            const result = await response.json()
+
+            if (response.ok) {
+                setRooms(result.rooms)
+            } 
+        }
+        fetchRooms()
+    }, [])
 
     function handleFileChange(event) {
         setFile(event.target.files[0])
@@ -33,10 +50,10 @@ function Home() {
 
             const result = await response.json()
 
-
             if (response.ok) {
                 setMessage("Server started!")
                 setPort(result.port)
+                setRoomId(result.room_id)
             } else {
                 setMessage("Error: " + result.error)
             }
@@ -46,7 +63,7 @@ function Home() {
     }
 
     function sendToRoom() {
-        navigate("/room")
+        navigate(`/room/${roomId}`)
     }
 
     return (
@@ -108,7 +125,38 @@ function Home() {
                     )
                 }
                 <h2>Current Rooms</h2>
-                <p>None</p>
+                {
+                    rooms.length > 0 ? (
+                        <div className="d-flex justify-content-center mx-md-5">
+                            <table className="table table-bordered">
+                                <thead>
+                                    <tr className="table-primary">
+                                        <th>Port</th>
+                                        <th>Room Page</th>
+                                        <th>Multitracker</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {rooms.map((room, index) => (
+                                        <tr key={index}>
+                                            <td>{room.port}</td>
+                                            <td><Link to={`http://localhost:5173/room/${room.room_id}`}>Room</Link></td>
+                                            <td><Link to={`http://localhost:5173/multitracker/${room.room_id}`}>Tracker</Link></td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        // <ul>
+                        //     {rooms.map((room, index) => (
+                        //         <li key={index}><Link to={`http://localhost:5173/room/${room.room_id}`}>{room.room_id}</Link></li>
+                        //     ))}
+                        // </ul>
+                    ) : ( 
+                        <p>None</p>
+                    )
+                }
             </div>
         </div>
     )

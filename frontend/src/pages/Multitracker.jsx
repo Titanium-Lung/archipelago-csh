@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, useParams } from "react-router-dom"
 import { useUser } from "../UserContext"
 import logo from "../assets/CSH Archipelago Logo.svg"
 
 function Multitracker() {
+    const { roomId } = useParams()
+
     const user = useUser()
 
     const [players, setPlayers] = useState([])
@@ -22,7 +24,7 @@ function Multitracker() {
 
     useEffect(() => {
         async function fetchMultiworld() {
-            const response = await fetch("http://localhost:5001/tracker", {
+            const response = await fetch(`http://localhost:5001/tracker/${roomId}`, {
                 method: "GET"
             })
 
@@ -182,9 +184,9 @@ function Multitracker() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {sortedPlayers.map(player => (
-                                    <tr>
-                                        <td><Link to={`/tracker/${player.slot}`}>{player.slot}</Link></td>
+                                {sortedPlayers.map((player, index) => (
+                                    <tr key={index}>
+                                        <td><Link to={`/tracker/${roomId}/${player.slot}`}>{player.slot}</Link></td>
                                         <td>{player.name}</td>
                                         <td>{player.game}</td>
                                         <td>
@@ -241,8 +243,8 @@ function Multitracker() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {sortedHints.map(hint => (
-                                    <tr>
+                                {sortedHints.map((hint, index) => (
+                                    <tr key={index}>
                                         <td>{hint.finding_player}</td>
                                         <td>{hint.receiving_player}</td>
                                         <td>{hint.item}</td>

@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom"
+import { Link, useNavigate, useParams } from "react-router-dom"
 
 function Log() {
+    const { roomId } = useParams()
+
     const navigate = useNavigate()
     const [log, setLog] = useState(["Populating log..."])
 
     useEffect(() => {
         async function fetchLog() {
-            const response = await fetch("http://localhost:5001/log", {
+            const response = await fetch(`http://localhost:5001/log/${roomId}`, {
                 method: "GET"
             })
 
@@ -28,7 +30,7 @@ function Log() {
 
     return (
         <div className="m-3">
-            <button className="btn btn-primary" style={{marginBottom: '10px'}} onClick={() => sendToPage("/room")}>Back to room</button>
+            <button className="btn btn-primary" style={{marginBottom: '10px'}} onClick={() => sendToPage(`/room/${roomId}`)}>Back to room</button>
             <h2>Log</h2>
             <div>
                 {log.map((line, index) => (

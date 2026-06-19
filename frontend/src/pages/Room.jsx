@@ -1,9 +1,11 @@
 import { useEffect, useState, useRef } from "react"
-import { useNavigate, Link } from "react-router-dom"
+import { useNavigate, Link, useParams } from "react-router-dom"
 import { useUser } from "../UserContext"
 import logo from "../assets/CSH Archipelago Logo.svg"
 
 function Room() {
+    const { roomId } = useParams()
+
     const navigate = useNavigate()
     const bottomRef = useRef(null)
     const user = useUser()
@@ -15,7 +17,7 @@ function Room() {
 
     useEffect(() => {
         async function restartServer() {
-            const response = await fetch("http://localhost:5001/restart", {
+            const response = await fetch(`http://localhost:5001/restart/${roomId}`, {
                 method: "PUT"
             })
 
@@ -30,7 +32,7 @@ function Room() {
 
     useEffect(() => {
         async function fetchRoom() {
-            const response = await fetch("http://localhost:5001/room", {
+            const response = await fetch(`http://localhost:5001/room/${roomId}`, {
                 method: "GET"
             })
 
@@ -46,7 +48,7 @@ function Room() {
 
     useEffect(() => {
         async function fetchLog() {
-            const response = await fetch("http://localhost:5001/log", {
+            const response = await fetch(`http://localhost:5001/log/${roomId}`, {
                 method: "GET"
             })
 
@@ -63,7 +65,7 @@ function Room() {
 
     useEffect(() => {
         async function fetchPlayers() {
-            const response = await fetch("http://localhost:5001/players", {
+            const response = await fetch(`http://localhost:5001/players/${roomId}`, {
                 method: "GET"
             })
 
@@ -86,7 +88,7 @@ function Room() {
         if (event.key === 'Enter') {
             console.log(event.target.value)
             try {
-                const response = await fetch("http://localhost:5001/command", {
+                const response = await fetch(`http://localhost:5001/command/${roomId}`, {
                     method: "POST",
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ command: event.target.value }),
@@ -106,19 +108,19 @@ function Room() {
         }
     }
 
-    async function sendServerCommand(command) {
-        const response = await fetch("http://localhost:5001/command", {
-            method: "POST",
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ command: command })
-        })
+    // async function sendServerCommand(command) {
+    //     const response = await fetch("http://localhost:5001/command", {
+    //         method: "POST",
+    //         headers: { 'Content-Type': 'application/json' },
+    //         body: JSON.stringify({ command: command })
+    //     })
 
-        const result = await response.json()
+    //     const result = await response.json()
 
-        if (!response.ok) {
-            console.log("Failed to send command to server")
-        }
-    }
+    //     if (!response.ok) {
+    //         console.log("Failed to send command to server")
+    //     }
+    // }
 
     function sendToPage(url) {
         navigate(url)
@@ -175,10 +177,10 @@ function Room() {
                     )
                 }
                 <div style={{padding: '10px'}}>
-                    <button className="btn btn-primary" onClick={() => sendToPage("/multitracker")}>Multiworld Tracker</button>
+                    <button className="btn btn-primary" onClick={() => sendToPage(`/multitracker/${roomId}`)}>Multiworld Tracker</button>
                 </div>
                 <div style={{paddingBottom: '20px'}}>
-                    <button className="btn btn-primary" onClick={() => sendToPage("/spheres")}>Sphere Tracker</button>
+                    <button className="btn btn-primary" onClick={() => sendToPage(`/spheres/${roomId}`)}>Sphere Tracker</button>
                 </div>
             </div>
             {
@@ -195,19 +197,19 @@ function Room() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {players.map(player => (
-                                    <tr>
+                                {players.map((player, index) => (
+                                    <tr key={index}>
                                         <td>{player.slot}</td>
                                         <td>{player.name}</td>
                                         <td>{player.game}</td>
                                         {
                                             'patch' in player ? (
-                                                <td><a href={`http://localhost:5001/players/${player.patch}`}>Download patch file</a></td>
+                                                <td><a href={`http://localhost:5001/players/${roomId}/${player.patch}`}>Download patch file</a></td>
                                             ) : (
                                                 <td>No patch file to download</td>
                                             )
                                         }
-                                        <td><Link to={`/tracker/${player.slot}`}>Tracker</Link></td>
+                                        <td><Link to={`/tracker/${roomId}/${player.slot}`}>Tracker</Link></td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -224,7 +226,7 @@ function Room() {
                     admin === user?.uuid ? (
                         <div>
                             <input type="text" id="input" name="Server command" placeholder="Server command" onKeyUp={handleKeyUp} style={{width: '500px', marginBottom: '10px', marginRight: '20px'}} />
-                            <Link to="/log">Full log</Link>
+                            <Link to={`/log/${roomId}`}>Full log</Link>
                         </div>
                     ) : (<div></div>)
                 }

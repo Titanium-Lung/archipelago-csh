@@ -15,11 +15,11 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/room" element={<Room />} />
-          <Route path="/log" element={<Log />} />
-          <Route path="/multitracker" element={<Multitracker />} />
-          <Route path="/spheres" element={<Sphere />} />
-          <Route path="/tracker/:slot" element={<Tracker />} />
+          <Route path="/room/:roomId" element={<Room />} />
+          <Route path="/log/:roomId" element={<Log />} />
+          <Route path="/multitracker/:roomId" element={<Multitracker />} />
+          <Route path="/spheres/:roomId" element={<Sphere />} />
+          <Route path="/tracker/:roomId/:slot" element={<Tracker />} />
           <Route path="/login" element={<Login />} />
         </Routes>
       </BrowserRouter>
