@@ -243,8 +243,8 @@ function Tracker() {
                         </tr>
                     </thead>
                     <tbody>
-                        {sortedItems.map(item => (
-                            <tr>
+                        {sortedItems.map((item, index) => (
+                            <tr key={index}>
                                 <td>{item.name}</td>
                                 <td>{item.count}</td>
                                 <td>{item.last_order_received}</td>
@@ -268,8 +268,8 @@ function Tracker() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {sortedLocations.map(location => (
-                                    <tr>
+                                {sortedLocations.map((location, index) => (
+                                    <tr key={index}>
                                         <td>{location.name}</td>
                                         <td>
                                             {
@@ -308,8 +308,8 @@ function Tracker() {
                         </tr>
                     </thead>
                     <tbody>
-                        {sortedHints.map(hint => (
-                            <tr>
+                        {sortedHints.map((hint, index) => (
+                            <tr key={index}>
                                 <td>{hint.finding_player}</td>
                                 <td>{hint.receiving_player}</td>
                                 <td>{hint.item}</td>

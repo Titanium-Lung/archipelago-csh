@@ -137,17 +137,21 @@ def upload_file():
             for slot in sphere:
                 slotinfo = decoded_arch["slot_info"][slot]
                 state.slotinfos[slot] = slotinfo
-                for location_id in sphere[slot]:
-                    state.location_info[location_id] = {}
+                if slot not in state.location_info:
+                    state.location_info[slot] = {}
 
-                    state.location_info[location_id]["sphere"] = sphere_num
-                    state.location_info[location_id]["from"] = slotinfo.name
-                    state.location_info[location_id]["game"] = slotinfo.game
+                state.location_info[slot]["name"] = slotinfo.name
+                for location_id in sphere[slot]:
+                    state.location_info[slot][location_id] = {}
+
+                    state.location_info[slot][location_id]["sphere"] = sphere_num
+                    state.location_info[slot][location_id]["from"] = slotinfo.name
+                    state.location_info[slot][location_id]["game"] = slotinfo.game
 
                     location_tuple = decoded_arch["locations"][slot][location_id] # format is: (item_id, receiver_slot_id, unknown#)
-                    state.location_info[location_id]["to"] = decoded_arch["slot_info"][location_tuple[1]].name
-                    state.location_info[location_id]["location_name"] = state.ids[slotinfo.game]['id_to_location_name'][location_id]
-                    state.location_info[location_id]["item_name"] = state.ids[decoded_arch["slot_info"][location_tuple[1]].game]['id_to_item_name'][location_tuple[0]]
+                    state.location_info[slot][location_id]["to"] = decoded_arch["slot_info"][location_tuple[1]].name
+                    state.location_info[slot][location_id]["location_name"] = state.ids[slotinfo.game]['id_to_location_name'][location_id]
+                    state.location_info[slot][location_id]["item_name"] = state.ids[decoded_arch["slot_info"][location_tuple[1]].game]['id_to_item_name'][location_tuple[0]]
             sphere_num+=1
 
     if state.running_process is not None:
@@ -465,15 +469,16 @@ def multiworld_data(room_id):
                             else:
                                 player["status"] = 0
                         
-                        for player in decoded_apsave["hints"]:
+                        for player in decoded_apsave["hints"]: # player is (team#, slot#)
                             for hint_info in decoded_apsave["hints"][player]:
-                                if hint_info.receiving_player == player[1]:
+                                slot = player[1]
+                                if hint_info.receiving_player == slot:
                                     hint = {}
-                                    hint["location"] = state.location_info[hint_info.location]["location_name"]
-                                    hint["receiving_player"] = state.location_info[hint_info.location]["to"]
-                                    hint["finding_player"] = state.location_info[hint_info.location]["from"]
-                                    hint["item"] = state.location_info[hint_info.location]["item_name"]
-                                    hint["game"] = state.location_info[hint_info.location]["game"]
+                                    hint["location"] = state.location_info[slot][hint_info.location]["location_name"]
+                                    hint["receiving_player"] = state.location_info[slot][hint_info.location]["to"]
+                                    hint["finding_player"] = state.location_info[slot][hint_info.location]["from"]
+                                    hint["item"] = state.location_info[slot][hint_info.location]["item_name"]
+                                    hint["game"] = state.location_info[slot][hint_info.location]["game"]
                                     if hint_info.entrance.strip():
                                         hint["entrance"] = hint_info.entrance
                                     else:
@@ -494,6 +499,7 @@ def multiworld_data(room_id):
                 player["last_activity"] = "None"
                 player["last_activity_num"] = 2147483647
                 player["status"] = 0
+                player["percent_checked"] = 0
     
     totals = {"total_checks": total_checks, "total_checked": total_checked, "games_complete": games_complete, "num_players": len(players), "recent_activity": recent_activity}
 
@@ -517,6 +523,14 @@ def individual_tracker_data(room_id, slot):
     items = {}
     locations = []
     hints = []
+
+    for location_num in decoded_arch["locations"][slot]:
+        location = {}
+        location["name"] = state.location_info[slot][location_num]["location_name"]
+        location["checked"] = False
+        location["number"] = location_num
+        locations.append(location)
+
     with os.scandir(state.extract_folder_path) as folder:
         for file in folder:
             if file.is_file():
@@ -536,26 +550,23 @@ def individual_tracker_data(room_id, slot):
                                 items[item_name]["last_order_received"] = count
                                 count+=1
                         
-                        for location_num in decoded_arch["locations"][slot]:
-                            location = {}
-                            location["name"] = state.location_info[location_num]["location_name"]
+                        for location in locations:
                             if (0, slot) in decoded_apsave["location_checks"]:
-                                if location_num in decoded_apsave["location_checks"][(0, slot)]:
+                                if location["number"] in decoded_apsave["location_checks"][(0, slot)]:
                                     location["checked"] = True
                                 else:
                                     location["checked"] = False
                             else:
                                 location["checked"] = False
-                            locations.append(location)
                         
                         if (0, slot) in decoded_apsave["hints"]:
                             for hint_info in decoded_apsave["hints"][(0, slot)]: # Hard codes team to 0
                                 hint = {}
-                                hint["location"] = state.location_info[hint_info.location]["location_name"]
-                                hint["receiving_player"] = state.location_info[hint_info.location]["to"]
-                                hint["finding_player"] = state.location_info[hint_info.location]["from"]
-                                hint["item"] = state.location_info[hint_info.location]["item_name"]
-                                hint["game"] = state.location_info[hint_info.location]["game"]
+                                hint["location"] = state.location_info[slot][hint_info.location]["location_name"]
+                                hint["receiving_player"] = state.location_info[slot][hint_info.location]["to"]
+                                hint["finding_player"] = state.location_info[slot][hint_info.location]["from"]
+                                hint["item"] = state.location_info[slot][hint_info.location]["item_name"]
+                                hint["game"] = state.location_info[slot][hint_info.location]["game"]
                                 if hint_info.entrance.strip():
                                     hint["entrance"] = hint_info.entrance
                                 else:
@@ -586,7 +597,7 @@ def sphere_items(room_id):
 
                         for key in decoded_apsave["location_checks"]: # key is (team#, slotid) tuple
                             for location_id in decoded_apsave["location_checks"][key]:
-                                item = state.location_info[location_id]
+                                item = state.location_info[key[1]][location_id]
                                 items.append(item)
     
     return jsonify({"items": items})

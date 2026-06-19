@@ -197,8 +197,8 @@ function Room() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {players.map(player => (
-                                    <tr>
+                                {players.map((player, index) => (
+                                    <tr key={index}>
                                         <td>{player.slot}</td>
                                         <td>{player.name}</td>
                                         <td>{player.game}</td>

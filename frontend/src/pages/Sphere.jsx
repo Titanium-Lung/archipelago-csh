@@ -114,8 +114,7 @@ function Sphere() {
             </nav>
             <h1 style={{textAlign: 'center'}}>Sphere tracker</h1>
             <p className="mx-3">This tracker lists already found locations by their logical access sphere. 
-                It ignores items that cannot be sent and will therefore differ from the sphere numbers in the spoiler playthrough.
-                This tracker will automatically update itself periodically.</p>
+                It ignores items that cannot be sent and will therefore differ from the sphere numbers in the spoiler playthrough.</p>
             <div className="mx-md-5 m-3">
                 <input type="text" id="input" name="search" placeholder="Search" value={filter} onChange={e => setFilter(e.target.value)} />
             </div>
@@ -134,8 +133,8 @@ function Sphere() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {sortedSpheres.map(item => (
-                                    <tr>
+                                {sortedSpheres.map((item, index) => (
+                                    <tr key={index}>
                                         <td>{item.sphere}</td>
                                         <td>{item.from}</td>
                                         <td>{item.to}</td>

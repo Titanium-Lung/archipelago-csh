@@ -184,8 +184,8 @@ function Multitracker() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {sortedPlayers.map(player => (
-                                    <tr>
+                                {sortedPlayers.map((player, index) => (
+                                    <tr key={index}>
                                         <td><Link to={`/tracker/${roomId}/${player.slot}`}>{player.slot}</Link></td>
                                         <td>{player.name}</td>
                                         <td>{player.game}</td>
@@ -243,8 +243,8 @@ function Multitracker() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {sortedHints.map(hint => (
-                                    <tr>
+                                {sortedHints.map((hint, index) => (
+                                    <tr key={index}>
                                         <td>{hint.finding_player}</td>
                                         <td>{hint.receiving_player}</td>
                                         <td>{hint.item}</td>
