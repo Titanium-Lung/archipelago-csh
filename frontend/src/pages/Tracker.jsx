@@ -9,6 +9,7 @@ function Tracker() {
     const navigate = useNavigate()
     const user = useUser()
 
+    const [slotName, setSlotName] = useState("")
     const [items, setItems] = useState([])
     const [hints, setHints] = useState([])
     const [locations, setLocations] = useState([])
@@ -29,7 +30,7 @@ function Tracker() {
 
     useEffect(() => {
         async function fetchItems() {
-            const response = await fetch(`http://localhost:5001/tracker/${roomId}/${slot}`, {
+            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/tracker/${roomId}/${slot}`, {
                 method: "GET"
             })
 
@@ -56,6 +57,8 @@ function Tracker() {
                 setFilteredHints(result.hints)
                 setLocations(result.locations)
                 setFilteredLocations(result.locations)
+
+                setSlotName(result.name)
             }
         }
         fetchItems()
@@ -191,9 +194,10 @@ function Tracker() {
 
     return (
         <div>
+            <title>{`${slotName}'s Tracker`}</title>
             <nav className="navbar navbar-expand-lg navbar-dark navbar-sticky bg-primary px-3 px-md-5 mb-4">
                 <a className="navbar-brand" href="/">
-                    <img src={logo} style={{ height: "40px", width: "auto" }} /> Archipelago Host
+                    <img src={logo} style={{ height: "40px", width: "auto" }} /> Archipelago
                 </a>
                 <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarColor01" aria-controls="navbarColor01" aria-expanded="false" aria-label="Toggle navigation">
                     <span className="navbar-toggler-icon"></span>
@@ -220,7 +224,7 @@ function Tracker() {
                                 <a className="dropdown-item" href="https://github.com/Titanium-Lung/archipelago-csh/issues">Report an issue</a>
                                 <a className="dropdown-item" href={`https://profiles.csh.rit.edu/user/${user?.username}`}>Profile</a>
                                 <div className="dropdown-divider"></div>
-                                <a className="dropdown-item" href="http://localhost:5001/logout">Logout</a>
+                                <a className="dropdown-item" href={`${import.meta.env.VITE_BACKEND_URL}/logout`}>Logout</a>
                             </div>
                         </li>
                     </ul>

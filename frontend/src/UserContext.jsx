@@ -7,7 +7,7 @@ export function UserProvider({ children }) {
 
     useEffect(() => {
         async function fetchUser() {
-            const response = await fetch("http://localhost:5001/user", {
+            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/user`, {
                 credentials: "include"
             })
             if (response.ok) {

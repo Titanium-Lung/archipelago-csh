@@ -8,6 +8,7 @@ function Multitracker() {
 
     const user = useUser()
 
+    const [port, setPort] = useState("")
     const [players, setPlayers] = useState([])
     const [totals, setTotals] = useState({})
     const [hints, setHints] = useState([])
@@ -24,7 +25,7 @@ function Multitracker() {
 
     useEffect(() => {
         async function fetchMultiworld() {
-            const response = await fetch(`http://localhost:5001/tracker/${roomId}`, {
+            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/tracker/${roomId}`, {
                 method: "GET"
             })
 
@@ -37,6 +38,7 @@ function Multitracker() {
                 setTotals(result.totals)
                 setHints(result.hints)
                 setFilteredHints(result.hints)
+                setPort(result.port)
             }
         }
         fetchMultiworld()
@@ -129,9 +131,10 @@ function Multitracker() {
 
     return (
         <div>
+            <title>{`Multitracker ${port}`}</title>
             <nav className="navbar navbar-expand-lg navbar-dark navbar-sticky bg-primary px-3 px-md-5 mb-4">
                 <a className="navbar-brand" href="/">
-                    <img src={logo} style={{ height: "40px", width: "auto" }} /> Archipelago Host
+                    <img src={logo} style={{ height: "40px", width: "auto" }} /> Archipelago
                 </a>
                 <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarColor01" aria-controls="navbarColor01" aria-expanded="false" aria-label="Toggle navigation">
                     <span className="navbar-toggler-icon"></span>
@@ -158,13 +161,14 @@ function Multitracker() {
                                 <a className="dropdown-item" href="https://github.com/Titanium-Lung/archipelago-csh/issues">Report an issue</a>
                                 <a className="dropdown-item" href={`https://profiles.csh.rit.edu/user/${user?.username}`}>Profile</a>
                                 <div className="dropdown-divider"></div>
-                                <a className="dropdown-item" href="http://localhost:5001/logout">Logout</a>
+                                <a className="dropdown-item" href={`${import.meta.env.VITE_BACKEND_URL}/logout`}>Logout</a>
                             </div>
                         </li>
                     </ul>
                 </div>
             </nav>
             <h1 style={{textAlign: 'center'}}>Multiworld Tracker</h1>
+            <p style={{textAlign: 'center'}}>Port: {port}</p>
             <div className="mx-md-5 m-3">
                 <input type="text" id="input" name="search" placeholder="Search" value={filterGames} onChange={e => setFilterGames(e.target.value)} />
             </div>

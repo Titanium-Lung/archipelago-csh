@@ -15,7 +15,7 @@ function Home() {
 
     useEffect(() => {
         async function fetchRooms() {
-            const response = await fetch(`http://localhost:5001/rooms`, {
+            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/rooms`, {
                 method: "GET"
             })
 
@@ -42,7 +42,7 @@ function Home() {
             const formData = new FormData()
             formData.append("file", file)
 
-            const response = await fetch("http://localhost:5001/upload", {
+            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/upload`, {
                 method: "POST",
                 body: formData,
                 credentials: "include"
@@ -62,6 +62,22 @@ function Home() {
         }
     }
 
+    async function deleteRoom(roomId) {
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/delete/${roomId}`, {
+            method: "DELETE",
+            credentials: "include"
+        })
+
+        const result = await response.json()
+
+        if (response.ok) {
+            console.log(result.message)
+        } else {
+            console.log(result.error)
+        }
+        window.location.reload()
+    }
+
     function sendToRoom() {
         navigate(`/room/${roomId}`)
     }
@@ -70,7 +86,7 @@ function Home() {
         <div>
             <nav className="navbar navbar-expand-lg navbar-dark navbar-sticky bg-primary px-3 px-md-5 mb-4">
                 <a className="navbar-brand" href="/">
-                    <img src={logo} style={{ height: "40px", width: "auto" }} /> Archipelago Host
+                    <img src={logo} style={{ height: "40px", width: "auto" }} /> Archipelago
                 </a>
                 <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarColor01" aria-controls="navbarColor01" aria-expanded="false" aria-label="Toggle navigation">
                     <span className="navbar-toggler-icon"></span>
@@ -97,7 +113,7 @@ function Home() {
                                 <a className="dropdown-item" href="https://github.com/Titanium-Lung/archipelago-csh/issues">Report an issue</a>
                                 <a className="dropdown-item" href={`https://profiles.csh.rit.edu/user/${user?.username}`}>Profile</a>
                                 <div className="dropdown-divider"></div>
-                                <a className="dropdown-item" href="http://localhost:5001/logout">Logout</a>
+                                <a className="dropdown-item" href={`${import.meta.env.VITE_BACKEND_URL}/logout`}>Logout</a>
                             </div>
                         </li>
                     </ul>
@@ -134,6 +150,8 @@ function Home() {
                                         <th>Port</th>
                                         <th>Room Page</th>
                                         <th>Multitracker</th>
+                                        <th>Start</th>
+                                        <th>Delete</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -142,17 +160,21 @@ function Home() {
                                             <td>{room.port}</td>
                                             <td><Link to={`http://localhost:5173/room/${room.room_id}`}>Room</Link></td>
                                             <td><Link to={`http://localhost:5173/multitracker/${room.room_id}`}>Tracker</Link></td>
+                                            <td>{room.start}</td>
+                                            <td>
+                                                {
+                                                    user?.uuid === room.admin_uuid ? (
+                                                        <button className="btn btn-danger" onClick={() => deleteRoom(room.room_id)}>Delete</button>
+                                                    ) : (
+                                                        <p>You can't delete this room</p>
+                                                    )
+                                                }
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
                         </div>
-
-                        // <ul>
-                        //     {rooms.map((room, index) => (
-                        //         <li key={index}><Link to={`http://localhost:5173/room/${room.room_id}`}>{room.room_id}</Link></li>
-                        //     ))}
-                        // </ul>
                     ) : ( 
                         <p>None</p>
                     )
