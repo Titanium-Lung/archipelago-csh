@@ -29,7 +29,7 @@ function Tracker() {
 
     useEffect(() => {
         async function fetchItems() {
-            const response = await fetch(`http://localhost:5001/tracker/${roomId}/${slot}`, {
+            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/tracker/${roomId}/${slot}`, {
                 method: "GET"
             })
 
@@ -220,7 +220,7 @@ function Tracker() {
                                 <a className="dropdown-item" href="https://github.com/Titanium-Lung/archipelago-csh/issues">Report an issue</a>
                                 <a className="dropdown-item" href={`https://profiles.csh.rit.edu/user/${user?.username}`}>Profile</a>
                                 <div className="dropdown-divider"></div>
-                                <a className="dropdown-item" href="http://localhost:5001/logout">Logout</a>
+                                <a className="dropdown-item" href={`${import.meta.env.VITE_BACKEND_URL}/logout`}>Logout</a>
                             </div>
                         </li>
                     </ul>

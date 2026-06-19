@@ -15,7 +15,7 @@ function Home() {
 
     useEffect(() => {
         async function fetchRooms() {
-            const response = await fetch("http://localhost:5001/rooms", {
+            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/rooms`, {
                 method: "GET"
             })
 
@@ -42,7 +42,7 @@ function Home() {
             const formData = new FormData()
             formData.append("file", file)
 
-            const response = await fetch("http://localhost:5001/upload", {
+            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/upload`, {
                 method: "POST",
                 body: formData,
                 credentials: "include"
@@ -63,7 +63,7 @@ function Home() {
     }
 
     async function deleteRoom(roomId) {
-        const response = await fetch(`http://localhost:5001/delete/${roomId}`, {
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/delete/${roomId}`, {
             method: "DELETE",
             credentials: "include"
         })
@@ -113,7 +113,7 @@ function Home() {
                                 <a className="dropdown-item" href="https://github.com/Titanium-Lung/archipelago-csh/issues">Report an issue</a>
                                 <a className="dropdown-item" href={`https://profiles.csh.rit.edu/user/${user?.username}`}>Profile</a>
                                 <div className="dropdown-divider"></div>
-                                <a className="dropdown-item" href="http://localhost:5001/logout">Logout</a>
+                                <a className="dropdown-item" href={`${import.meta.env.VITE_BACKEND_URL}/logout`}>Logout</a>
                             </div>
                         </li>
                     </ul>
@@ -175,12 +175,6 @@ function Home() {
                                 </tbody>
                             </table>
                         </div>
-
-                        // <ul>
-                        //     {rooms.map((room, index) => (
-                        //         <li key={index}><Link to={`http://localhost:5173/room/${room.room_id}`}>{room.room_id}</Link></li>
-                        //     ))}
-                        // </ul>
                     ) : ( 
                         <p>None</p>
                     )

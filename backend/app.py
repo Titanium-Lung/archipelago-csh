@@ -43,8 +43,8 @@ _AUTH = OIDCAuthentication({'default': _CONFIG, 'google': _GOOGLE_CONFIG}, app)
 UPLOAD_FOLDER = "uploads"
 ARCHIPELAGO_SERVER = "Archipelago-0.6.7/MultiServer.py"
 SERVER_PORT = 38281
-PORT_RANGE = 200
-RETRY = 99
+PORT_RANGE = 20
+RETRY = 19
 SHUTDOWN_TIME = 7200
 
 rooms = {}
@@ -181,7 +181,7 @@ def upload_file():
         return jsonify({"error": "error finding port"}), 500
     
     state.running_process = subprocess.Popen(
-        ["Archipelago-0.6.7/venv/bin/python3", ARCHIPELAGO_SERVER, state.arch_file_path, f"--port={state.port}", f"--auto_shutdown={SHUTDOWN_TIME}"],
+        ["python3", ARCHIPELAGO_SERVER, state.arch_file_path, f"--port={state.port}", f"--auto_shutdown={SHUTDOWN_TIME}"],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         stdin=subprocess.PIPE,
@@ -667,4 +667,4 @@ def cleanup():
 atexit.register(cleanup)
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5001, use_reloader=False)
+    app.run(debug=True, port=5001, use_reloader=False, host="0.0.0.0")

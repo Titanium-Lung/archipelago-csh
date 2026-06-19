@@ -15,7 +15,7 @@ function Sphere() {
 
     useEffect(() => {
         async function fetchSpheres() {
-            const response = await fetch(`http://localhost:5001/spheres/${roomId}`, {
+            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/spheres/${roomId}`, {
                 method: "GET"
             })
 
@@ -106,7 +106,7 @@ function Sphere() {
                                 <a className="dropdown-item" href="https://github.com/Titanium-Lung/archipelago-csh/issues">Report an issue</a>
                                 <a className="dropdown-item" href={`https://profiles.csh.rit.edu/user/${user?.username}`}>Profile</a>
                                 <div className="dropdown-divider"></div>
-                                <a className="dropdown-item" href="http://localhost:5001/logout">Logout</a>
+                                <a className="dropdown-item" href={`${import.meta.env.VITE_BACKEND_URL}/logout`}>Logout</a>
                             </div>
                         </li>
                     </ul>

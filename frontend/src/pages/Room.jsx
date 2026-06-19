@@ -17,7 +17,7 @@ function Room() {
 
     useEffect(() => {
         async function restartServer() {
-            const response = await fetch(`http://localhost:5001/restart/${roomId}`, {
+            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/restart/${roomId}`, {
                 method: "PUT"
             })
 
@@ -32,7 +32,7 @@ function Room() {
 
     useEffect(() => {
         async function fetchRoom() {
-            const response = await fetch(`http://localhost:5001/room/${roomId}`, {
+            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/room/${roomId}`, {
                 method: "GET"
             })
 
@@ -48,7 +48,7 @@ function Room() {
 
     useEffect(() => {
         async function fetchLog() {
-            const response = await fetch(`http://localhost:5001/log/${roomId}`, {
+            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/log/${roomId}`, {
                 method: "GET"
             })
 
@@ -65,7 +65,7 @@ function Room() {
 
     useEffect(() => {
         async function fetchPlayers() {
-            const response = await fetch(`http://localhost:5001/players/${roomId}`, {
+            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/players/${roomId}`, {
                 method: "GET"
             })
 
@@ -88,7 +88,7 @@ function Room() {
         if (event.key === 'Enter') {
             console.log(event.target.value)
             try {
-                const response = await fetch(`http://localhost:5001/command/${roomId}`, {
+                const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/command/${roomId}`, {
                     method: "POST",
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ command: event.target.value }),
@@ -107,20 +107,6 @@ function Room() {
             document.getElementById('input').value = ''
         }
     }
-
-    // async function sendServerCommand(command) {
-    //     const response = await fetch("http://localhost:5001/command", {
-    //         method: "POST",
-    //         headers: { 'Content-Type': 'application/json' },
-    //         body: JSON.stringify({ command: command })
-    //     })
-
-    //     const result = await response.json()
-
-    //     if (!response.ok) {
-    //         console.log("Failed to send command to server")
-    //     }
-    // }
 
     function sendToPage(url) {
         navigate(url)
@@ -157,7 +143,7 @@ function Room() {
                                 <a className="dropdown-item" href="https://github.com/Titanium-Lung/archipelago-csh/issues">Report an issue</a>
                                 <a className="dropdown-item" href={`https://profiles.csh.rit.edu/user/${user?.username}`}>Profile</a>
                                 <div className="dropdown-divider"></div>
-                                <a className="dropdown-item" href="http://localhost:5001/logout">Logout</a>
+                                <a className="dropdown-item" href={`${import.meta.env.VITE_BACKEND_URL}/logout`}>Logout</a>
                             </div>
                         </li>
                     </ul>
@@ -204,7 +190,7 @@ function Room() {
                                         <td>{player.game}</td>
                                         {
                                             'patch' in player ? (
-                                                <td><a href={`http://localhost:5001/players/${roomId}/${player.patch}`}>Download patch file</a></td>
+                                                <td><a href={`${import.meta.env.VITE_BACKEND_URL}/players/${roomId}/${player.patch}`}>Download patch file</a></td>
                                             ) : (
                                                 <td>No patch file to download</td>
                                             )

@@ -9,7 +9,7 @@ function Log() {
 
     useEffect(() => {
         async function fetchLog() {
-            const response = await fetch(`http://localhost:5001/log/${roomId}`, {
+            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/log/${roomId}`, {
                 method: "GET"
             })
 
