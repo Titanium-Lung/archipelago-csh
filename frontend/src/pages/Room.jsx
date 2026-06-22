@@ -59,6 +59,7 @@ function Room() {
             }
         }
 
+        // Every 2 seconds, fetch the log 
         const interval = setInterval(fetchLog, 2000)
         return () => clearInterval(interval)
     }, [])
@@ -78,6 +79,7 @@ function Room() {
         fetchPlayers()
     }, [])
 
+    // Autoscroll the log when it's updated 
     useEffect(() => {
         if (bottomRef.current) {
             bottomRef.current.scrollTop = bottomRef.current.scrollHeight

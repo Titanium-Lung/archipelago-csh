@@ -28,6 +28,7 @@ function Home() {
         fetchRooms()
     }, [])
 
+    // For file picker
     function handleFileChange(event) {
         setFile(event.target.files[0])
     }
@@ -122,6 +123,7 @@ function Home() {
             <div style={{textAlign: 'center'}}>
                 <h1>Archipelago Host</h1>
                 {
+                    // Only CSH accounts can upload files 
                     user?.csh ? (
                         <div className="form-group">
                             <input type="file" accept=".zip" onChange={handleFileChange} className="form-control-file" id="exampleInputFile" aria-describedby="fileHelp" />

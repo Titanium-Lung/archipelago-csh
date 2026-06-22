@@ -13,11 +13,13 @@ function Multitracker() {
     const [totals, setTotals] = useState({})
     const [hints, setHints] = useState([])
 
+    // consts for sorting tables
     const [gamesSortedColumn, setGamesSortedColumn] = useState(localStorage.getItem("gamesSortedColumn") || null)
     const [gamesSortDirection, setGamesSortDirection] = useState(localStorage.getItem("gamesSortDirection") || null)
     const [hintsSortedColumn, setHintsSortedColumn] = useState(localStorage.getItem("hintsSortedColumn") || null)
     const [hintsSortDirection, setHintsSortDirection] = useState(localStorage.getItem("hintsSortDirection") || null)
 
+    // consts for searching tables
     const [filteredPlayers, setFilteredPlayers] = useState([])
     const [filterGames, setFilterGames] = useState('')
     const [filteredHints, setFilteredHints] = useState([])
@@ -43,6 +45,8 @@ function Multitracker() {
         }
         fetchMultiworld()
     }, [])
+
+    // Put sorting consts into local storage 
 
     useEffect(() => {
         if (gamesSortedColumn) {
@@ -117,6 +121,7 @@ function Multitracker() {
         }
     }
 
+    // TODO make sort case insensitive 
     const sortedPlayers = gamesSortedColumn ? [...filteredPlayers].sort((a, b) => {
         if (a[gamesSortedColumn] < b[gamesSortedColumn]) return gamesSortDirection === "asc" ? -1 : 1
         if (a[gamesSortedColumn] > b[gamesSortedColumn]) return gamesSortDirection === "asc" ? 1 : -1
@@ -200,7 +205,8 @@ function Multitracker() {
                                                     5: "Connected",
                                                     10: "Ready",
                                                     20: "Playing",
-                                                    30: "Goal Completed"
+                                                    30: "Goal Completed",
+                                                    40: "Released"
                                                 }[player.status] ?? "Unknown Status"
                                             }
                                         </td>

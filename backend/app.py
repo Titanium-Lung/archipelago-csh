@@ -16,6 +16,7 @@ from datetime import datetime
 from flask_pyoidc.flask_pyoidc import OIDCAuthentication # type: ignore
 from flask_pyoidc.provider_configuration import ProviderConfiguration, ClientMetadata # type: ignore
 sys.path.insert(0, "Archipelago-0.6.7")
+import multidata
 from Utils import restricted_loads # type: ignore
 from dotenv import load_dotenv # type: ignore
 load_dotenv()
@@ -62,26 +63,39 @@ class ServerState():
         self.admin = None
         self.start = None
 
+"""
+Login with CSH 
+"""
 @app.route("/login")
 @_AUTH.oidc_auth('default')
 def login():
     return redirect("http://localhost:5173")
 
+"""
+Login with Google
+"""
 @app.route("/googlelogin")
 @_AUTH.oidc_auth('google')
 def google_login():
     return redirect("http://localhost:5173")
 
+"""
+Logout 
+"""
 @app.route("/logout")
 @_AUTH.oidc_logout
 def logout():
     return redirect("http://localhost:5173")
 
+"""
+Gets data of user if they are logged in
+"""
 @app.route("/user")
 def user_info():
     user = session.get('userinfo')
     if user is None:
         return jsonify({"error":"not logged in"}), 401
+    
     if user.get('preferred_username'):
         return jsonify({"username": user.get('preferred_username'), "uuid": user.get('uuid'), "picture_url": "https://profiles.csh.rit.edu/image/"+user.get('preferred_username'), "csh": True})
     elif user.get('name'):
@@ -89,6 +103,9 @@ def user_info():
     else:
         return jsonify({"error": "could not find name"}), 400
 
+"""
+Handles upload of zip file to start an archipelago server 
+"""
 @app.route("/upload", methods=["POST"])
 @_AUTH.oidc_auth('default')
 def upload_file():
@@ -112,6 +129,7 @@ def upload_file():
 
     filename = None
 
+    # Extract zip file and delete it
     with zipfile.ZipFile(zip_save_path) as zf:
         for name in zf.namelist():
             if name.endswith(".archipelago"):
@@ -129,6 +147,7 @@ def upload_file():
         data = f.read()
         decoded_arch = restricted_loads(zlib.decompress(data[1:]))
 
+        # Build ids dict which contains what id goes to each item/location for each game
         state.ids = {}
         for game in decoded_arch["datapackage"]:
             subdict = decoded_arch["datapackage"][game]
@@ -136,6 +155,8 @@ def upload_file():
             state.ids[game]['id_to_item_name'] = {v: k for k, v in subdict['item_name_to_id'].items()}
             state.ids[game]['id_to_location_name'] = {v: k for k, v in subdict['location_name_to_id'].items()}
         
+        # Build location_info dict which contains every location and all the info about it
+        # Structure is: location_info = {slot#: {location_id: {name, sphere, from, game, to, location_name, item_name}}}
         sphere_num = 1
         for sphere in decoded_arch["spheres"]:
             for slot in sphere:
@@ -144,7 +165,6 @@ def upload_file():
                 if slot not in state.location_info:
                     state.location_info[slot] = {}
 
-                state.location_info[slot]["name"] = slotinfo.name
                 for location_id in sphere[slot]:
                     state.location_info[slot][location_id] = {}
 
@@ -158,12 +178,15 @@ def upload_file():
                     state.location_info[slot][location_id]["item_name"] = state.ids[decoded_arch["slot_info"][location_tuple[1]].game]['id_to_item_name'][location_tuple[0]]
             sphere_num+=1
 
+        # Id to location name is not used anywhere else
         for game in state.ids:
             state.ids[game].pop('id_to_location_name', None)
 
     if state.running_process is not None:
         state.running_process.terminate()
 
+    # TODO move this above so it doesn't make a bunch of files and not use them
+    # Generate random ports and find one that is available 
     ports = random.sample(range(SERVER_PORT, SERVER_PORT+PORT_RANGE), RETRY)
     for port in ports:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -192,6 +215,7 @@ def upload_file():
     with open(logpath, "w") as f:
         f.write("")
 
+    # Separate thread to write stdout to a log file
     thread = threading.Thread(target=write_log, args=(state.running_process, logpath, room_id))
     thread.daemon = True
     thread.start()
@@ -210,6 +234,9 @@ def upload_file():
 
     return jsonify(result)
 
+"""
+Get all the running rooms and relevant info
+"""
 @app.route("/rooms")
 def get_all_rooms():
     current_rooms = []
@@ -224,6 +251,10 @@ def get_all_rooms():
     
     return jsonify({"rooms": current_rooms})
 
+"""
+Stops specified room and deletes all files associated with it
+TODO make this atomic 
+"""
 @app.route("/delete/<room_id>", methods=["DELETE"])
 @_AUTH.oidc_auth('default')
 def delete_room(room_id):
@@ -248,7 +279,9 @@ def delete_room(room_id):
 
     return jsonify({"message": "successfully deleted"})
 
-
+"""
+Request to restart the room. Does nothing if it's currently running 
+"""
 @app.route("/restart/<room_id>", methods=["PUT"])
 def restart_server(room_id):
     if room_id not in rooms:
@@ -260,16 +293,18 @@ def restart_server(room_id):
         return jsonify({"error": "no server to restart"}), 404
     
     if state.running_process is None:
-        if state.restarting:
+        if state.restarting: # to handle multiple clients trying to restart at the same time
             return jsonify({"error": "Server is already restarting"}), 400
         
         state.restarting = True
         
+        # Ensure the port isn't taken by itself
         if not wait_for_free_port(state.port):
             print("Timed out while waiting for port")
             state.restarting = False
             return jsonify({"error": "Timed out while waiting for port"}), 500
         
+        # Attempt to connect to the same port. If unavailable, try new ones
         ports = [state.port]
         first = True
         for port in ports:
@@ -313,6 +348,9 @@ def restart_server(room_id):
     else:
         return jsonify({"error": "server already running"}), 400
 
+"""
+Get the contents of the log file of the specified room
+"""
 @app.route("/log/<room_id>")
 def stream_log(room_id):
     if room_id not in rooms:
@@ -331,6 +369,9 @@ def stream_log(room_id):
 
     return jsonify(result)
 
+"""
+Get the port and admin of the specified room
+"""
 @app.route("/room/<room_id>")
 def room_info(room_id):
     if room_id not in rooms:
@@ -345,7 +386,10 @@ def room_info(room_id):
         "port": state.port,
         "admin": state.admin
     })
-    
+
+"""
+Write the given command to stdin of the process of the specified room
+"""
 @app.route("/command/<room_id>", methods=["POST"])
 @_AUTH.oidc_auth('default')
 def server_command(room_id):
@@ -364,7 +408,10 @@ def server_command(room_id):
     state.running_process.stdin.write((data.get('command') + '\n').encode())
     state.running_process.stdin.flush()
     return jsonify({"message":"ok"})
-    
+
+"""
+Gets all the players participating in the multiworld and relevant data
+"""
 @app.route("/players/<room_id>")
 def get_players(room_id):
     if room_id not in rooms:
@@ -375,35 +422,13 @@ def get_players(room_id):
     if state.arch_file_path is None:
         return jsonify({"error": "No archipelago game uploaded"}), 404
 
-    with open(state.arch_file_path, "rb") as f:
-        data = f.read()
-    
-    decoded = restricted_loads(zlib.decompress(data[1:]))
-
-    players = [
-        {"slot": slot_id, "name": info.name, "game": info.game}
-        for slot_id, info, in decoded["slot_info"].items()
-    ]
-
-    with os.scandir(state.extract_folder_path) as folder:
-        for file in folder:
-            if file.is_file():
-                if "P" in file.name[2:]:
-                    try:
-                        first = file.name.index("P")
-                        second = file.name.index("P", first+1)
-                        end = file.name.index('_', second+1)
-                    
-                        patch_id = int(file.name[second+1:end])
-                        for player in players:
-                            if player['slot'] == patch_id:
-                                player['patch'] = file.name
-
-                    except ValueError:
-                        continue
+    players = multidata.get_players(state)
 
     return jsonify({"players": players})
 
+"""
+Sends the requested file 
+"""
 @app.route("/players/<room_id>/<filename>")
 def send_patch_file(room_id, filename):
     if room_id not in rooms:
@@ -416,10 +441,18 @@ def send_patch_file(room_id, filename):
     
     filepath = os.path.join(state.extract_folder_path, filename)
 
+    if not os.path.exists(filepath):
+        return jsonify({"error":"requested file does not exist"})
+
     return send_file(filepath)
 
+"""
+Gets the data for each player in the multiworld 
+Data includes slot id, name, game, checks gotten, total checks, and last activity (most recent check)
+Also gets all hints
+"""
 @app.route("/tracker/<room_id>")
-def multiworld_data(room_id):
+def multiworld_data(room_id): 
     if room_id not in rooms:
         return jsonify({"error": "No archipelago game with this id"}), 404
 
@@ -428,113 +461,13 @@ def multiworld_data(room_id):
     if state.arch_file_path is None: 
         return jsonify({"error": "no archipelago game loaded"}), 404
 
-    with open(state.arch_file_path, "rb") as f:
-        data = f.read()
-    
-    decoded_arch = restricted_loads(zlib.decompress(data[1:]))
-
-    players = [
-        {"slot": slot_id, "name": info.name, "game": info.game}
-        for slot_id, info, in decoded_arch["slot_info"].items()
-    ]
-
-    hints = []
-
-    total_checks = 0
-    total_checked = 0
-    games_complete = 0
-    recent_activity = "None"
-    recent_activity_dt = (datetime.now() - datetime.fromtimestamp(0))
-
-    with os.scandir(state.extract_folder_path) as folder:
-        apsave = False
-        for file in folder:
-            if file.is_file():
-                if file.name.endswith(".apsave"):
-                    with open(file.path, "rb") as f:
-                        decoded_apsave = restricted_loads(zlib.decompress(f.read()))
-
-                        # with open("sample ap files/sample_apsave.txt", "w") as f:
-                        #     f.write(str(decoded_apsave))
-
-                        player_activity = {}
-                        for activity in decoded_apsave["client_activity_timers"]:
-                            player_activity[activity[0]] = activity[1]
-
-                        for player in players:
-                            checks = len(decoded_arch["locations"][player["slot"]])
-                            player["total_checks"] = checks
-                            total_checks += checks
-
-                            player_tuple = decoded_arch["connect_names"][player["name"]] # Gives in format of (team#, slot#)
-
-                            location_checks = decoded_apsave.get("location_checks", {})
-                            checked = len(location_checks.get(player_tuple, set()))
-                            player["checks_found"] = checked
-                            total_checked += checked
-
-                            player["percent_checked"] = checked/checks
-
-                            if player_tuple in player_activity:
-                                timediff = (datetime.now() - datetime.fromtimestamp(player_activity[player_tuple]))
-                                total_seconds = int(timediff.total_seconds())
-                                hours = total_seconds // 3600
-                                minutes = (total_seconds % 3600) // 60
-                                seconds = total_seconds % 60
-
-                                player["last_activity"] = f"{hours:02}:{minutes:02}:{seconds:02}"
-                                player["last_activity_num"] = total_seconds
-
-                                if recent_activity_dt > timediff:
-                                    recent_activity = f"{hours:02}:{minutes:02}:{seconds:02}"
-                                    recent_activity_dt = timediff
-                            else:
-                                player["last_activity"] = "None"
-                                player["last_activity_num"] = 2147483647
-                            
-                            if player_tuple in decoded_apsave["client_game_state"]:
-                                player["status"] = decoded_apsave["client_game_state"][player_tuple]
-                                if player["status"] == 30:
-                                    games_complete += 1
-                            else:
-                                player["status"] = 0
-                        
-                        for player in decoded_apsave["hints"]: # player is (team#, slot#)
-                            for hint_info in decoded_apsave["hints"][player]:
-                                slot = player[1]
-                                if hint_info.receiving_player == slot:
-                                    hint = {}
-                                    hint["location"] = state.location_info[slot][hint_info.location]["location_name"]
-                                    hint["receiving_player"] = state.location_info[slot][hint_info.location]["to"]
-                                    hint["finding_player"] = state.location_info[slot][hint_info.location]["from"]
-                                    hint["item"] = state.location_info[slot][hint_info.location]["item_name"]
-                                    hint["game"] = state.location_info[slot][hint_info.location]["game"]
-                                    if hint_info.entrance.strip():
-                                        hint["entrance"] = hint_info.entrance
-                                    else:
-                                        hint["entrance"] = "Vanilla"
-                                    hint["found"] = hint_info.found
-
-                                    hints.append(hint)
-                        
-                        apsave = True
-        
-        if not apsave:
-            for player in players:
-                checks = len(decoded_arch["locations"][player["slot"]])
-                player["total_checks"] = checks
-                total_checks += checks
-
-                player["checks_found"] = 0
-                player["last_activity"] = "None"
-                player["last_activity_num"] = 2147483647
-                player["status"] = 0
-                player["percent_checked"] = 0
-    
-    totals = {"total_checks": total_checks, "total_checked": total_checked, "games_complete": games_complete, "num_players": len(players), "recent_activity": recent_activity}
+    players, totals, hints = multidata.multitracker_data(state)
 
     return jsonify({"players": players, "totals": totals, "hints": hints, "port": state.port})
 
+"""
+Gets received items, locations, and hints for given slot
+"""
 @app.route("/tracker/<room_id>/<int:slot>")
 def individual_tracker_data(room_id, slot):
     if room_id not in rooms:
@@ -545,68 +478,13 @@ def individual_tracker_data(room_id, slot):
     if state.arch_file_path is None: 
         return jsonify({"error": "no archipelago game loaded"}), 404
 
-    with open(state.arch_file_path, "rb") as f:
-        data = f.read()
-    
-    decoded_arch = restricted_loads(zlib.decompress(data[1:]))
-    
-    items = {}
-    locations = []
-    hints = []
-
-    for location_num in decoded_arch["locations"][slot]:
-        location = {}
-        location["name"] = state.location_info[slot][location_num]["location_name"]
-        location["checked"] = False
-        location["number"] = location_num
-        locations.append(location)
-
-    with os.scandir(state.extract_folder_path) as folder:
-        for file in folder:
-            if file.is_file():
-                if file.name.endswith(".apsave"):
-                    with open(file.path, "rb") as f:
-                        decoded_apsave = restricted_loads(zlib.decompress(f.read()))
-
-                        count = 1
-                        if (0, slot, True) in decoded_apsave["received_items"]:
-                            for item_info in decoded_apsave["received_items"][(0, slot, True)]: # hard codes team number to 0
-                                item_name = state.ids[state.slotinfos[slot].game]["id_to_item_name"][item_info.item]
-                                if item_name in items:
-                                    items[item_name]["count"] += 1
-                                else:
-                                    items[item_name] = {}
-                                    items[item_name]["count"] = 1
-                                items[item_name]["last_order_received"] = count
-                                count+=1
-                        
-                        for location in locations:
-                            if (0, slot) in decoded_apsave["location_checks"]:
-                                if location["number"] in decoded_apsave["location_checks"][(0, slot)]:
-                                    location["checked"] = True
-                                else:
-                                    location["checked"] = False
-                            else:
-                                location["checked"] = False
-                        
-                        if (0, slot) in decoded_apsave["hints"]:
-                            for hint_info in decoded_apsave["hints"][(0, slot)]: # Hard codes team to 0
-                                hint = {}
-                                hint["location"] = state.location_info[slot][hint_info.location]["location_name"]
-                                hint["receiving_player"] = state.location_info[slot][hint_info.location]["to"]
-                                hint["finding_player"] = state.location_info[slot][hint_info.location]["from"]
-                                hint["item"] = state.location_info[slot][hint_info.location]["item_name"]
-                                hint["game"] = state.location_info[slot][hint_info.location]["game"]
-                                if hint_info.entrance.strip():
-                                    hint["entrance"] = hint_info.entrance
-                                else:
-                                    hint["entrance"] = "Vanilla"
-                                hint["found"] = hint_info.found
-
-                                hints.append(hint)
+    items, locations, hints = multidata.individual_player_data(state, slot)
     
     return jsonify({"items": items, "locations": locations, "hints": hints, "name": state.slotinfos[slot].name})
 
+"""
+Gets every item received by every player
+"""
 @app.route("/spheres/<room_id>")
 def sphere_items(room_id):
     if room_id not in rooms:
@@ -616,24 +494,15 @@ def sphere_items(room_id):
 
     if state.arch_file_path is None: 
         return jsonify({"error": "no archipelago game loaded"}), 404
-    
-    items = []
-    with os.scandir(state.extract_folder_path) as folder:
-        for file in folder:
-            if file.is_file():
-                if file.name.endswith(".apsave"):
-                    with open(file.path, "rb") as f:
-                        decoded_apsave = restricted_loads(zlib.decompress(f.read()))
 
-                        for key in decoded_apsave["location_checks"]: # key is (team#, slotid) tuple
-                            for location_id in decoded_apsave["location_checks"][key]:
-                                item = state.location_info[key[1]][location_id]
-                                items.append(item)
+    items = multidata.sphere_data(state)
     
     return jsonify({"items": items})
 
 
-
+"""
+Writes the stdout of a process to a file
+"""
 def write_log(process, filepath, room_id):
     with open(filepath, "a") as f:
         for line in process.stdout:
@@ -643,6 +512,9 @@ def write_log(process, filepath, room_id):
         if room_id in rooms:
             rooms[room_id].running_process = None
 
+"""
+Check if certain port is free for 10 seconds
+"""
 def wait_for_free_port(port, timeout=10):
     start = time.time()
     while time.time() - start < timeout:
@@ -655,6 +527,9 @@ def wait_for_free_port(port, timeout=10):
                 time.sleep(0.5)
     return False
 
+"""
+When program closes, stop all running rooms
+"""
 def cleanup():
     global rooms
     for room_id in rooms:
