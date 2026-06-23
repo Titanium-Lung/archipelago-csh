@@ -62,6 +62,7 @@ class ServerState():
         self.restarting = False
         self.admin = None
         self.start = None
+        self.released_games = set()
 
 """
 Login with CSH 
@@ -261,7 +262,7 @@ def delete_room(room_id):
     if room_id not in rooms:
         return jsonify({"error": "No archipelago game with this id"}), 404
 
-    state = rooms[room_id]
+    state: ServerState = rooms[room_id]
 
     if session.get('userinfo').get('uuid') != state.admin:
         return jsonify({"error": "you are not the admin of this server"}), 403
@@ -287,7 +288,7 @@ def restart_server(room_id):
     if room_id not in rooms:
         return jsonify({"error": "No archipelago game with this id"}), 404
 
-    state = rooms[room_id]
+    state: ServerState = rooms[room_id]
 
     if state.arch_file_path is None:
         return jsonify({"error": "no server to restart"}), 404
@@ -356,7 +357,7 @@ def stream_log(room_id):
     if room_id not in rooms:
         return jsonify({"error": "No archipelago game with this id"}), 404
 
-    state = rooms[room_id]
+    state: ServerState = rooms[room_id]
 
     if state.arch_file_path is None: 
         return jsonify({"error": "no archipelago game loaded"}), 404
@@ -377,7 +378,7 @@ def room_info(room_id):
     if room_id not in rooms:
             return jsonify({"error": "No archipelago game with this id"}), 404
 
-    state = rooms[room_id]
+    state: ServerState = rooms[room_id]
 
     if state.arch_file_path is None:
         return jsonify({"error": "no archipelago game uploaded"}), 404
@@ -396,7 +397,7 @@ def server_command(room_id):
     if room_id not in rooms:
         return jsonify({"error": "No archipelago game with this id"}), 404
 
-    state = rooms[room_id]
+    state: ServerState = rooms[room_id]
 
     if state.running_process is None:
         return jsonify({"error": "Archipelago server not running"}), 404
@@ -405,9 +406,14 @@ def server_command(room_id):
         return jsonify({"error": "user is not admin"}), 400
     
     data = request.get_json()
-    state.running_process.stdin.write((data.get('command') + '\n').encode())
+    command: str = data.get('command')
+    state.running_process.stdin.write((command + '\n').encode())
     state.running_process.stdin.flush()
-    return jsonify({"message":"ok"})
+
+    if command.startswith('/release') and len(command.split(' ')) == 2:
+        state.released_games.add(command.split(' ')[1])
+
+    return jsonify({"message": "ok"})
 
 """
 Gets all the players participating in the multiworld and relevant data
@@ -417,7 +423,7 @@ def get_players(room_id):
     if room_id not in rooms:
         return jsonify({"error": "No archipelago game with this id"}), 404
 
-    state = rooms[room_id]
+    state: ServerState = rooms[room_id]
 
     if state.arch_file_path is None:
         return jsonify({"error": "No archipelago game uploaded"}), 404
@@ -434,7 +440,7 @@ def send_patch_file(room_id, filename):
     if room_id not in rooms:
         return jsonify({"error": "No archipelago game with this id"}), 404
 
-    state = rooms[room_id]
+    state: ServerState = rooms[room_id]
 
     if state.arch_file_path is None: 
         return jsonify({"error": "no archipelago game loaded"}), 404
@@ -456,7 +462,7 @@ def multiworld_data(room_id):
     if room_id not in rooms:
         return jsonify({"error": "No archipelago game with this id"}), 404
 
-    state = rooms[room_id]
+    state: ServerState = rooms[room_id]
 
     if state.arch_file_path is None: 
         return jsonify({"error": "no archipelago game loaded"}), 404
@@ -473,7 +479,7 @@ def individual_tracker_data(room_id, slot):
     if room_id not in rooms:
         return jsonify({"error": "No archipelago game with this id"}), 404
 
-    state = rooms[room_id]
+    state: ServerState = rooms[room_id]
 
     if state.arch_file_path is None: 
         return jsonify({"error": "no archipelago game loaded"}), 404
@@ -490,7 +496,7 @@ def sphere_items(room_id):
     if room_id not in rooms:
         return jsonify({"error": "No archipelago game with this id"}), 404
 
-    state = rooms[room_id]
+    state: ServerState = rooms[room_id]
 
     if state.arch_file_path is None: 
         return jsonify({"error": "no archipelago game loaded"}), 404
@@ -529,6 +535,7 @@ def wait_for_free_port(port, timeout=10):
 
 """
 When program closes, stop all running rooms
+TODO make previous rooms restart on program startup
 """
 def cleanup():
     global rooms

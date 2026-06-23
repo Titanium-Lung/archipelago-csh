@@ -119,12 +119,13 @@ def multitracker_data(state: ServerState):
                                 player["status"] = decoded_apsave["client_game_state"][player_tuple]
                                 if player["status"] == 30: # 30 means completed
                                     games_complete += 1
-                                elif player["percent_checked"] == 100: # TODO make this more reliable 
+                                elif player["name"] in state.released_games: 
                                     player["status"] = 40 # I made this up; it's for released games
                             else:
-                                player["status"] = 0
-                                if player["percent_checked"] == 100:
+                                if player["name"] in state.released_games:
                                     player["status"] = 40
+                                else:
+                                    player["status"] = 0
                         
                         for player in decoded_apsave["hints"]: # player is (team#, slot#)
                             for hint_info in decoded_apsave["hints"][player]:
@@ -159,7 +160,7 @@ def multitracker_data(state: ServerState):
                 player["status"] = 0
                 player["percent_checked"] = 0
     
-    totals: dict = {"total_checks": total_checks, "total_checked": total_checked, "games_complete": games_complete, "num_players": len(players), "recent_activity": recent_activity}
+    totals: dict = {"total_checks": total_checks, "total_checked": total_checked, "games_complete": games_complete, "num_players": len(players), "num_players_not_released": len(players)-len(state.released_games), "recent_activity": recent_activity}
 
     return players, totals, hints
 
