@@ -119,6 +119,23 @@ def upload_file():
 
     if not file.filename.endswith(".zip"):
         return jsonify({"error": "File must be a .zip file"}), 400
+    
+    # Generate random ports and find one that is available 
+    ports = random.sample(range(SERVER_PORT, SERVER_PORT+PORT_RANGE), RETRY)
+    for port in ports:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            try:
+                s.bind(("localhost", port))
+                print(f"Port is {port}")
+                state.port = port
+                break
+            except OSError:
+                print(f"Failed to bind port: {port}")
+                continue
+    
+    if state.port is None:
+        return jsonify({"error": "Could not find an available port in range, try again later"}), 500
 
     zip_save_path = os.path.join(UPLOAD_FOLDER, file.filename)
     file.save(zip_save_path)
@@ -185,24 +202,6 @@ def upload_file():
 
     if state.running_process is not None:
         state.running_process.terminate()
-
-    # TODO move this above so it doesn't make a bunch of files and not use them
-    # Generate random ports and find one that is available 
-    ports = random.sample(range(SERVER_PORT, SERVER_PORT+PORT_RANGE), RETRY)
-    for port in ports:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            try:
-                s.bind(("localhost", port))
-                print(f"Port is {port}")
-                state.port = port
-                break
-            except OSError:
-                print(f"Failed to bind port: {port}")
-                continue
-    
-    if state.port is None:
-        return jsonify({"error": "error finding port"}), 500
     
     state.running_process = subprocess.Popen(
         ["python3", ARCHIPELAGO_SERVER, state.arch_file_path, f"--port={state.port}", f"--auto_shutdown={SHUTDOWN_TIME}"],
@@ -213,6 +212,7 @@ def upload_file():
 
     logpath = f"logs/{room_id}log.txt"
 
+    # Make the log file exist (don't know if I need to do this)
     with open(logpath, "w") as f:
         f.write("")
 
@@ -299,7 +299,7 @@ def restart_server(room_id):
         
         state.restarting = True
         
-        # Ensure the port isn't taken by itself
+        # Ensure the port isn't taken by itself (perhaps unnecessary)
         if not wait_for_free_port(state.port):
             print("Timed out while waiting for port")
             state.restarting = False
