@@ -166,7 +166,6 @@ def multitracker_data(state: ServerState):
 
 """
 Gets received items, locations, and hints for one player
-TODO Precollected items
 """
 def individual_player_data(state: ServerState, slot: int):
     with open(state.arch_file_path, "rb") as f:
@@ -186,6 +185,18 @@ def individual_player_data(state: ServerState, slot: int):
         location["number"] = location_num
         locations.append(location)
 
+    count = 1 # Tracks order of received items
+    for item in decoded_arch["precollected_items"][slot]:
+        item_name = state.ids[state.slotinfos[slot].game]["id_to_item_name"][item]
+        # Add or Update
+        if item_name in items:
+            items[item_name]["count"] += 1
+        else:
+            items[item_name] = {}
+            items[item_name]["count"] = 1
+        items[item_name]["last_order_received"] = count
+        count+=1
+
     with os.scandir(state.extract_folder_path) as folder:
         # Scan uploaded folder for apsave
         for file in folder:
@@ -194,11 +205,10 @@ def individual_player_data(state: ServerState, slot: int):
                     with open(file.path, "rb") as f:
                         decoded_apsave = restricted_loads(zlib.decompress(f.read()))
 
-                        count = 1 # Tracks order of received items
                         if (0, slot, True) in decoded_apsave["received_items"]: # (0, slot, True) is format of received_items dict in the apsave
                             for item_info in decoded_apsave["received_items"][(0, slot, True)]: # hard codes team number to 0
                                 item_name = state.ids[state.slotinfos[slot].game]["id_to_item_name"][item_info.item]
-                                # Add or Update
+                                
                                 if item_name in items:
                                     items[item_name]["count"] += 1
                                 else:
