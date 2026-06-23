@@ -7,6 +7,8 @@ function Home() {
     const navigate = useNavigate()
     const user = useUser()
 
+    const [showModal, setShowModal] = useState(false)
+
     const [rooms, setRooms] = useState([])
     const [file, setFile] = useState(null) 
     const [message, setMessage] = useState("")
@@ -77,6 +79,8 @@ function Home() {
             console.log(result.error)
         }
         window.location.reload()
+
+        setShowModal(false) // Because of confirm delete dialog box
     }
 
     function sendToRoom() {
@@ -166,7 +170,31 @@ function Home() {
                                             <td>
                                                 {
                                                     user?.uuid === room.admin_uuid ? (
-                                                        <button className="btn btn-danger" onClick={() => deleteRoom(room.room_id)}>Delete</button>
+                                                        <div>
+                                                            <button className="btn btn-danger" onClick={() => setShowModal(true)}>Delete</button>
+                                                            
+                                                            {showModal && (
+                                                                <div className="modal show d-block" tabIndex="-1">
+                                                                    <div className="modal-dialog">
+                                                                        <div className="modal-content">
+                                                                            <div className="modal-header">
+                                                                                <h5 className="modal-title">Are you sure you want to delete this room?</h5>
+                                                                                <button className="btn-close" onClick={() => setShowModal(false)} />
+                                                                            </div>
+                                                                            <div className="modal-body">
+                                                                                <p>This action cannot be undone.</p>
+                                                                            </div>
+                                                                            <div className="modal-footer">
+                                                                                <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
+                                                                                <button className="btn btn-danger" onClick={() => deleteRoom(room.room_id)}>Confirm</button>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+
+                                                            {showModal && <div className="modal-backdrop show" />}
+                                                        </div>
                                                     ) : (
                                                         <p>You can't delete this room</p>
                                                     )
@@ -181,6 +209,9 @@ function Home() {
                         <p>None</p>
                     )
                 }
+                
+
+                {showModal && <div className="modal-backdrop show" />}
             </div>
         </div>
     )
