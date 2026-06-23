@@ -254,7 +254,6 @@ def get_all_rooms():
 
 """
 Stops specified room and deletes all files associated with it
-TODO make this atomic 
 """
 @app.route("/delete/<room_id>", methods=["DELETE"])
 @_AUTH.oidc_auth('default')
@@ -269,6 +268,7 @@ def delete_room(room_id):
     
     if state.running_process is not None:
         state.running_process.terminate()
+        state.running_process.wait()
     
     shutil.rmtree(state.extract_folder_path)
 

@@ -209,9 +209,6 @@ function Home() {
                         <p>None</p>
                     )
                 }
-                
-
-                {showModal && <div className="modal-backdrop show" />}
             </div>
         </div>
     )
