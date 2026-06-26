@@ -123,17 +123,17 @@ function Multitracker() {
 
     const sortedPlayers = gamesSortedColumn ? [...filteredPlayers].sort((a, b) => {
         var a_cleaned = ""
-        var a_cleaned = ""
+        var b_cleaned = ""
         if (!isNaN(+a[gamesSortedColumn])) { // Check if it's a number 
             a_cleaned = a[gamesSortedColumn]
-            a_cleaned = b[gamesSortedColumn]
+            b_cleaned = b[gamesSortedColumn]
         } else {
             a_cleaned = String(a[gamesSortedColumn]).toLowerCase()
-            a_cleaned = String(b[gamesSortedColumn]).toLowerCase()
+            b_cleaned = String(b[gamesSortedColumn]).toLowerCase()
         }
 
-        if (a_cleaned < a_cleaned) return gamesSortDirection === "asc" ? -1 : 1
-        if (a_cleaned > a_cleaned) return gamesSortDirection === "asc" ? 1 : -1
+        if (a_cleaned < b_cleaned) return gamesSortDirection === "asc" ? -1 : 1
+        if (a_cleaned > b_cleaned) return gamesSortDirection === "asc" ? 1 : -1
         return 0
     }) : filteredPlayers
 
@@ -215,7 +215,7 @@ function Multitracker() {
                                                     10: "Ready",
                                                     20: "Playing",
                                                     30: "Goal Completed",
-                                                    40: "Released"
+                                                    25: "Released"
                                                 }[player.status] ?? "Unknown Status"
                                             }
                                         </td>

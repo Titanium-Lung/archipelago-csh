@@ -119,11 +119,11 @@ def multitracker_data(state: ServerState):
                                 player["status"] = decoded_apsave["client_game_state"][player_tuple]
                                 if player["status"] == 30: # 30 means completed
                                     games_complete += 1
-                                elif player["name"] in state.released_games: 
-                                    player["status"] = 40 # I made this up; it's for released games
+                                elif player["name"].lower() in state.released_games: 
+                                    player["status"] = 25 # I made this up; it's for released games
                             else:
-                                if player["name"] in state.released_games:
-                                    player["status"] = 40
+                                if player["name"].lower() in state.released_games:
+                                    player["status"] = 25
                                 else:
                                     player["status"] = 0
                         
@@ -187,7 +187,7 @@ def individual_player_data(state: ServerState, slot: int):
 
     count = 1 # Tracks order of received items
     for item in decoded_arch["precollected_items"][slot]:
-        item_name = state.ids[state.slotinfos[slot].game]["id_to_item_name"][item]
+        item_name = state.ids[state.slotinfos[slot]["game"]]["id_to_item_name"][item]
         # Add or Update
         if item_name in items:
             items[item_name]["count"] += 1
@@ -207,7 +207,7 @@ def individual_player_data(state: ServerState, slot: int):
 
                         if (0, slot, True) in decoded_apsave["received_items"]: # (0, slot, True) is format of received_items dict in the apsave
                             for item_info in decoded_apsave["received_items"][(0, slot, True)]: # hard codes team number to 0
-                                item_name = state.ids[state.slotinfos[slot].game]["id_to_item_name"][item_info.item]
+                                item_name = state.ids[state.slotinfos[slot]["game"]]["id_to_item_name"][item_info.item]
                                 
                                 if item_name in items:
                                     items[item_name]["count"] += 1

@@ -12,6 +12,7 @@ import time
 import uuid
 import random
 import shutil
+import json
 from datetime import datetime
 from flask_pyoidc.flask_pyoidc import OIDCAuthentication # type: ignore
 from flask_pyoidc.provider_configuration import ProviderConfiguration, ClientMetadata # type: ignore
@@ -62,7 +63,7 @@ class ServerState():
         self.restarting = False
         self.admin = None
         self.start = None
-        self.released_games = set()
+        self.released_games = {} # dictionary and not set for json encoding lol
 
 """
 Login with CSH 
@@ -143,7 +144,7 @@ def upload_file():
     file.save(zip_save_path)
 
     room_id = str(uuid.uuid4())
-    state = ServerState()
+    state: ServerState = ServerState()
 
     state.port = room_port
     state.extract_folder_path = zip_save_path[:zip_save_path.index('.')]
@@ -182,7 +183,7 @@ def upload_file():
         for sphere in decoded_arch["spheres"]:
             for slot in sphere:
                 slotinfo = decoded_arch["slot_info"][slot]
-                state.slotinfos[slot] = slotinfo
+                state.slotinfos[slot] = {"name": slotinfo.name, "game": slotinfo.game}
                 if slot not in state.location_info:
                     state.location_info[slot] = {}
 
@@ -228,6 +229,8 @@ def upload_file():
     state.start = datetime.now()
 
     rooms[room_id] = state
+
+    save_state(room_id, state)
 
     result = {
         "message": "Server started",
@@ -329,7 +332,7 @@ def restart_server(room_id):
             return jsonify({"error": "could not find a port to restart the server on"}), 500
         
         state.running_process = subprocess.Popen(
-            ["Archipelago-0.6.7/venv/bin/python3", ARCHIPELAGO_SERVER, state.arch_file_path, f"--port={state.port}", f"--auto_shutdown={SHUTDOWN_TIME}"],
+            ["python3", ARCHIPELAGO_SERVER, state.arch_file_path, f"--port={state.port}", f"--auto_shutdown={SHUTDOWN_TIME}"],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             stdin=subprocess.PIPE,
@@ -340,6 +343,8 @@ def restart_server(room_id):
         thread = threading.Thread(target=write_log, args=(state.running_process, logpath, room_id))
         thread.daemon = True
         thread.start()
+
+        save_state(room_id, state)
 
         result = {
             "message": "Server started",
@@ -414,7 +419,8 @@ def server_command(room_id):
     state.running_process.stdin.flush()
 
     if command.startswith('/release') and len(command.split(' ')) == 2:
-        state.released_games.add(command.split(' ')[1])
+        state.released_games[command.split(' ')[1].lower()] = ""
+        save_state(room_id, state)
 
     return jsonify({"message": "ok"})
 
@@ -489,7 +495,7 @@ def individual_tracker_data(room_id, slot):
 
     items, locations, hints = multidata.individual_player_data(state, slot)
     
-    return jsonify({"items": items, "locations": locations, "hints": hints, "name": state.slotinfos[slot].name})
+    return jsonify({"items": items, "locations": locations, "hints": hints, "name": state.slotinfos[slot]["name"]})
 
 """
 Gets every item received by every player
@@ -508,6 +514,97 @@ def sphere_items(room_id):
     
     return jsonify({"items": items})
 
+
+"""
+Starts up every archipelago server in the uploads folder
+"""
+def restart_all():
+    global rooms
+
+    with os.scandir(UPLOAD_FOLDER) as uploads:
+        for server in uploads:
+            if server.is_dir():
+                with open(f"{server.path}/state.json") as f:
+                    data = json.load(f)
+
+                    room_id = data["room_id"]
+                    state: ServerState = ServerState()
+                    state.arch_file_path = data["arch_file_path"]
+                    state.extract_folder_path = data["extract_folder_path"]
+                    
+                    # Integer keys get changed to strings when serialised
+                    location_info = {}
+                    for slot in data["location_info"]: 
+                        location_info[int(slot)] = {int(k): v for k, v in data["location_info"][slot].items()}
+                    state.location_info = location_info
+
+                    ids = {}
+                    for game in data["ids"]:
+                        ids[game] = {}
+                        ids[game]["id_to_item_name"] = {int(k): v for k, v in data["ids"][game]["id_to_item_name"].items()}
+                    state.ids = ids
+
+                    state.slotinfos = {int(k): v for k, v in data["slotinfos"].items()}
+                    state.port = data["port"]
+                    state.admin = data["admin"]
+                    state.start = datetime.fromtimestamp(data["start"])
+                    state.released_games = data["released_games"]
+
+                    # Attempt to connect to the same port. If unavailable, try new ones
+                    ports = [state.port]
+                    first = True
+                    for port in ports:
+                        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                            try:
+                                s.bind(("localhost", port))
+                                print(f"Port is {port}")
+                                state.port = port
+                            except OSError:
+                                print(f"Failed to bind port {port}")
+                                state.port = None
+                                if first:
+                                    ports = ports + random.sample(range(SERVER_PORT, SERVER_PORT+PORT_RANGE), RETRY)
+                                    first = False
+                    
+                    if state.port is None:
+                        return jsonify({"error": "could not find a port to restart the server on"}), 500
+                    
+                    state.running_process = subprocess.Popen(
+                        ["python3", ARCHIPELAGO_SERVER, state.arch_file_path, f"--port={state.port}", f"--auto_shutdown={SHUTDOWN_TIME}"],
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT,
+                        stdin=subprocess.PIPE,
+                    )
+
+                    logpath = f"logs/{room_id}log.txt"
+
+                    thread = threading.Thread(target=write_log, args=(state.running_process, logpath, room_id))
+                    thread.daemon = True
+                    thread.start()
+
+                    save_state(room_id, state)
+
+                    rooms[room_id] = state
+
+"""
+Saves the current server state into a json file
+"""
+def save_state(room_id, state: ServerState):
+    data = {
+        "room_id": room_id,
+        "arch_file_path": state.arch_file_path,
+        "extract_folder_path": state.extract_folder_path,
+        "location_info": state.location_info,
+        "ids": state.ids,
+        "slotinfos": state.slotinfos,
+        "port": state.port,
+        "admin": state.admin,
+        "start": state.start.timestamp(),
+        "released_games": state.released_games
+    }
+    with open(f"{state.extract_folder_path}/state.json", "w") as f:
+        json.dump(data, f)
 
 """
 Writes the stdout of a process to a file
@@ -538,7 +635,6 @@ def wait_for_free_port(port, timeout=10):
 
 """
 When program closes, stop all running rooms
-TODO make previous rooms restart on program startup
 """
 def cleanup():
     global rooms
@@ -552,4 +648,6 @@ def cleanup():
 atexit.register(cleanup)
 
 if __name__ == "__main__":
+    with app.app_context():
+        restart_all()
     app.run(debug=True, port=5001, use_reloader=False, host="0.0.0.0")
