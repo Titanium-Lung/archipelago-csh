@@ -121,10 +121,19 @@ function Multitracker() {
         }
     }
 
-    // TODO make sort case insensitive 
     const sortedPlayers = gamesSortedColumn ? [...filteredPlayers].sort((a, b) => {
-        if (a[gamesSortedColumn] < b[gamesSortedColumn]) return gamesSortDirection === "asc" ? -1 : 1
-        if (a[gamesSortedColumn] > b[gamesSortedColumn]) return gamesSortDirection === "asc" ? 1 : -1
+        var a_cleaned = ""
+        var a_cleaned = ""
+        if (!isNaN(+a[gamesSortedColumn])) { // Check if it's a number 
+            a_cleaned = a[gamesSortedColumn]
+            a_cleaned = b[gamesSortedColumn]
+        } else {
+            a_cleaned = String(a[gamesSortedColumn]).toLowerCase()
+            a_cleaned = String(b[gamesSortedColumn]).toLowerCase()
+        }
+
+        if (a_cleaned < a_cleaned) return gamesSortDirection === "asc" ? -1 : 1
+        if (a_cleaned > a_cleaned) return gamesSortDirection === "asc" ? 1 : -1
         return 0
     }) : filteredPlayers
 

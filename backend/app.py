@@ -120,6 +120,8 @@ def upload_file():
     if not file.filename.endswith(".zip"):
         return jsonify({"error": "File must be a .zip file"}), 400
     
+    room_port = None
+    
     # Generate random ports and find one that is available 
     ports = random.sample(range(SERVER_PORT, SERVER_PORT+PORT_RANGE), RETRY)
     for port in ports:
@@ -128,13 +130,13 @@ def upload_file():
             try:
                 s.bind(("localhost", port))
                 print(f"Port is {port}")
-                state.port = port
+                room_port = port
                 break
             except OSError:
                 print(f"Failed to bind port: {port}")
                 continue
     
-    if state.port is None:
+    if room_port is None:
         return jsonify({"error": "Could not find an available port in range, try again later"}), 500
 
     zip_save_path = os.path.join(UPLOAD_FOLDER, file.filename)
@@ -143,6 +145,7 @@ def upload_file():
     room_id = str(uuid.uuid4())
     state = ServerState()
 
+    state.port = room_port
     state.extract_folder_path = zip_save_path[:zip_save_path.index('.')]
 
     filename = None
