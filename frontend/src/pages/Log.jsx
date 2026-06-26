@@ -20,6 +20,7 @@ function Log() {
             }
         }
 
+        // Fetch log every 2 seconds
         const interval = setInterval(fetchLog, 2000)
         return () => clearInterval(interval)
     }, [])

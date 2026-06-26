@@ -8,10 +8,12 @@ function Sphere() {
     const user = useUser()
 
     const [sphereData, setSphereData] = useState([])
-    const [filteredData, setFilteredData] = useState([])
+
+    // Consts for sorting and searching table
     const [sortedColumn, setSortedColumn] = useState(localStorage.getItem("sortedColumn") || null)
     const [sortDirection, setSortDirection] = useState(localStorage.getItem("sortDirection") || "asc")
     const [filter, setFilter] = useState('')
+    const [filteredData, setFilteredData] = useState([])
 
     useEffect(() => {
         async function fetchSpheres() {
@@ -29,6 +31,8 @@ function Sphere() {
         }
         fetchSpheres()
     }, [])
+
+    // Put sort consts into local storage
 
     useEffect(() => {
         if (sortedColumn) {

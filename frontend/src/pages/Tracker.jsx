@@ -14,6 +14,7 @@ function Tracker() {
     const [hints, setHints] = useState([])
     const [locations, setLocations] = useState([])
 
+    // Consts for sorting tables
     const [itemsSortedColumn, setItemsSortedColumn] = useState(localStorage.getItem("itemsSortedColumn") || null)
     const [itemsSortDirection, setItemsSortDirection] = useState(localStorage.getItem("itemsSortDirection") || null)
     const [locationsSortedColumn, setLocationsSortedColumn] = useState(localStorage.getItem("locationsSortedColumn") || null)
@@ -21,6 +22,7 @@ function Tracker() {
     const [hintsSortedColumn, setHintsSortedColumn] = useState(localStorage.getItem("hintsSortedColumn") || null)
     const [hintsSortDirection, setHintsSortDirection] = useState(localStorage.getItem("hintsSortDirection") || null)
 
+    // Consts for searching tables
     const [filteredItems, setFilteredItems] = useState([])
     const [itemFilter, setItemFilter] = useState('')
     const [filteredLocations, setFilteredLocations] = useState([])
@@ -38,6 +40,8 @@ function Tracker() {
 
             if (response.ok) {
                 console.log("Successfully fetched items")
+
+                // Convert items from a dict to a list 
                 const itemDict = result.items
                 const itemList = []
                 
@@ -64,6 +68,8 @@ function Tracker() {
         fetchItems()
     }, [])
 
+    // Put sort consts into localstorage
+    
     useEffect(() => {
         if (itemsSortedColumn) {
             localStorage.setItem("itemsSortedColumn", itemsSortedColumn)

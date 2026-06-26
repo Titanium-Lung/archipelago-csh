@@ -11,7 +11,7 @@ import { UserProvider } from "./UserContext"
 
 function App() {
   return (
-    <UserProvider>
+    <UserProvider> {/* Fetches user data to provide to every other component */}
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Home />} />
