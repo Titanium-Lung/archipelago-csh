@@ -68,3 +68,4 @@ All archipelago rooms that are stored are restarted when the program boots up, u
 * Collapsible tables
 * Store information about users such as amount of checks gotten 
 * Make the autoscrolling for the log not stupid
+* Make custom 404 page
