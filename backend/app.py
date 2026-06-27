@@ -521,72 +521,71 @@ Starts up every archipelago server in the uploads folder
 def restart_all():
     global rooms
 
-    if os.path.isdir(UPLOAD_FOLDER):
-        with os.scandir(UPLOAD_FOLDER) as uploads:
-            for server in uploads:
-                if server.is_dir():
-                    with open(f"{server.path}/state.json") as f:
-                        data = json.load(f)
+    with os.scandir(UPLOAD_FOLDER) as uploads:
+        for server in uploads:
+            if server.is_dir():
+                with open(f"{server.path}/state.json") as f:
+                    data = json.load(f)
 
-                        room_id = data["room_id"]
-                        state: ServerState = ServerState()
-                        state.arch_file_path = data["arch_file_path"]
-                        state.extract_folder_path = data["extract_folder_path"]
-                        
-                        # Integer keys get changed to strings when serialised
-                        location_info = {}
-                        for slot in data["location_info"]: 
-                            location_info[int(slot)] = {int(k): v for k, v in data["location_info"][slot].items()}
-                        state.location_info = location_info
+                    room_id = data["room_id"]
+                    state: ServerState = ServerState()
+                    state.arch_file_path = data["arch_file_path"]
+                    state.extract_folder_path = data["extract_folder_path"]
+                    
+                    # Integer keys get changed to strings when serialised
+                    location_info = {}
+                    for slot in data["location_info"]: 
+                        location_info[int(slot)] = {int(k): v for k, v in data["location_info"][slot].items()}
+                    state.location_info = location_info
 
-                        ids = {}
-                        for game in data["ids"]:
-                            ids[game] = {}
-                            ids[game]["id_to_item_name"] = {int(k): v for k, v in data["ids"][game]["id_to_item_name"].items()}
-                        state.ids = ids
+                    ids = {}
+                    for game in data["ids"]:
+                        ids[game] = {}
+                        ids[game]["id_to_item_name"] = {int(k): v for k, v in data["ids"][game]["id_to_item_name"].items()}
+                    state.ids = ids
 
-                        state.slotinfos = {int(k): v for k, v in data["slotinfos"].items()}
-                        state.port = data["port"]
-                        state.admin = data["admin"]
-                        state.start = datetime.fromtimestamp(data["start"])
-                        state.released_games = data["released_games"]
+                    state.slotinfos = {int(k): v for k, v in data["slotinfos"].items()}
+                    state.port = data["port"]
+                    state.admin = data["admin"]
+                    state.start = datetime.fromtimestamp(data["start"])
+                    state.released_games = data["released_games"]
 
-                        # Attempt to connect to the same port. If unavailable, try new ones
-                        ports = [state.port]
-                        first = True
-                        for port in ports:
-                            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                                s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                                try:
-                                    s.bind(("localhost", port))
-                                    print(f"Port is {port}")
-                                    state.port = port
-                                except OSError:
-                                    print(f"Failed to bind port {port}")
-                                    state.port = None
-                                    if first:
-                                        ports = ports + random.sample(range(SERVER_PORT, SERVER_PORT+PORT_RANGE), RETRY)
-                                        first = False
-                        
-                        if state.port is None:
-                            return jsonify({"error": "could not find a port to restart the server on"}), 500
-                        
-                        state.running_process = subprocess.Popen(
-                            ["python3", ARCHIPELAGO_SERVER, state.arch_file_path, f"--port={state.port}", f"--auto_shutdown={SHUTDOWN_TIME}"],
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT,
-                            stdin=subprocess.PIPE,
-                        )
+                    # Attempt to connect to the same port. If unavailable, try new ones
+                    ports = [state.port]
+                    first = True
+                    for port in ports:
+                        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                            try:
+                                s.bind(("localhost", port))
+                                print(f"Port is {port}")
+                                state.port = port
+                            except OSError:
+                                print(f"Failed to bind port {port}")
+                                state.port = None
+                                if first:
+                                    ports = ports + random.sample(range(SERVER_PORT, SERVER_PORT+PORT_RANGE), RETRY)
+                                    first = False
+                    
+                    if state.port is None:
+                        return jsonify({"error": "could not find a port to restart the server on"}), 500
+                    
+                    state.running_process = subprocess.Popen(
+                        ["python3", ARCHIPELAGO_SERVER, state.arch_file_path, f"--port={state.port}", f"--auto_shutdown={SHUTDOWN_TIME}"],
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT,
+                        stdin=subprocess.PIPE,
+                    )
 
-                        logpath = f"logs/{room_id}log.txt"
+                    logpath = f"logs/{room_id}log.txt"
 
-                        thread = threading.Thread(target=write_log, args=(state.running_process, logpath, room_id))
-                        thread.daemon = True
-                        thread.start()
+                    thread = threading.Thread(target=write_log, args=(state.running_process, logpath, room_id))
+                    thread.daemon = True
+                    thread.start()
 
-                        save_state(room_id, state)
+                    save_state(room_id, state)
 
-                        rooms[room_id] = state
+                    rooms[room_id] = state
 
 """
 Saves the current server state into a json file
@@ -650,5 +649,7 @@ atexit.register(cleanup)
 
 if __name__ == "__main__":
     with app.app_context():
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+        os.makedirs("logs", exist_ok=True)
         restart_all()
     app.run(debug=True, port=5001, use_reloader=False, host="0.0.0.0")
