@@ -11,11 +11,11 @@ OIDC_ISSUER = os.environ.get('OIDC_ISSUER',
 OIDC_REDIRECT_URI = os.environ.get('OIDC_REDIRECT_URI',
                                    'http://localhost:5001/redirect_uri')
 OIDC_CLIENT_CONFIG = {
-    'client_id': os.environ.get('OIDC_CLIENT_ID', ''),
-    'client_secret': os.environ.get('OIDC_CLIENT_SECRET', ''),
+    'client_id': os.environ.get('OIDC_CLIENT_ID', ' '),
+    'client_secret': os.environ.get('OIDC_CLIENT_SECRET', ' '),
 }
 
 GOOGLE_CLIENT_CONFIG = {
-    'client_id': os.environ.get('GOOGLE_CLIENT_ID', ''),
-    'client_secret': os.environ.get('GOOGLE_CLIENT_SECRET', ''),
+    'client_id': os.environ.get('GOOGLE_CLIENT_ID', ' '),
+    'client_secret': os.environ.get('GOOGLE_CLIENT_SECRET', ' '),
 }
