@@ -52,3 +52,19 @@ In the `backend`, run `python3 app.py` to start the backend. You will need to us
 In the `frontend`, run `npm run dev`. 
 
 Then visit http://localhost:5173 to view the website. Note that logging in with Google will not work. 
+
+## Architecture
+
+This project uses a React frontend to make calls to a Flask backend. 
+
+The frontend takes in a zip file and sends it to the backend, which extracts it and stores it. As a subprocess, the backend runs MultiServer.py (in the Archipelago source code) using the .archipelago file contained in the zip to start up an archipelago server. All save data from the archipelago server is written by the Archipelago source to a .apsave file in the same directory as the .archipelago. The .apsave and .archipelago files are read by the backend to send information about the archipelago to the frontend. 
+
+### Restarting the rooms
+
+All archipelago rooms that are stored are restarted when the program boots up, using the information the backend writes to a json file in the same directory as the .archipelago and .apsave for each room. 
+
+## Planned features
+
+* Collapsible tables
+* Store information about users such as amount of checks gotten 
+* Make the autoscrolling for the log not stupid
