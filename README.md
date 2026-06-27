@@ -27,7 +27,9 @@ This URL can be changed if you prefer, but the backend Dockerfile and docker-com
 
 Once you have the .env files, go to the root of the project in your terminal and enter: 
 
-`docker-compose up --build` 
+```
+docker-compose up --build
+```
 
 Then visit http://localhost:5173 to view the website. Note that logging in with Google will not work. 
 
@@ -35,11 +37,15 @@ Then visit http://localhost:5173 to view the website. Note that logging in with 
 
 Once you have the .env files, go to the `backend` folder in your terminal and enter the following. If you wish to use a venv, activate it first. 
 
-`pip install -r requirements.txt`
+```
+pip install -r requirements.txt
+```
 
 Then go to the `frontend` folder and enter: 
 
-`npm install`
+```
+npm install
+```
 
 In the `backend`, run `python3 app.py` to start the backend. You will need to use a version of Python above 3.11.9 but below 3.14 due to the Archipelago source code.
 
