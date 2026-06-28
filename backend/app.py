@@ -144,6 +144,9 @@ def upload_file():
     if not os.path.isdir(UPLOAD_FOLDER):
         return jsonify({"error": "uploads folder does not exist"}), 500
 
+    if not os.path.isdir("logs"):
+        return jsonify({"error": "logs folder does not exist"}), 500
+
     zip_save_path = os.path.join(UPLOAD_FOLDER, file.filename)
     extract_folder_path = zip_save_path[:zip_save_path.index('.')]
 
@@ -658,7 +661,7 @@ atexit.register(cleanup)
 
 if __name__ == "__main__":
     with app.app_context():
-        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-        os.makedirs("logs", exist_ok=True)
+        # os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+        # os.makedirs("logs", exist_ok=True)
         restart_all()
     app.run(debug=True, port=5001, use_reloader=False, host="0.0.0.0")
