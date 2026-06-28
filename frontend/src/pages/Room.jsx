@@ -165,11 +165,11 @@ function Room() {
                         </div>
                     )
                 }
-                <div style={{padding: '10px'}}>
-                    <button className="btn btn-primary" onClick={() => sendToPage(`/multitracker/${roomId}`)}>Multiworld Tracker</button>
+                <div>
+                    <Link to={`/multitracker/${roomId}`}>Multiworld Tracker</Link>
                 </div>
                 <div style={{paddingBottom: '20px'}}>
-                    <button className="btn btn-primary" onClick={() => sendToPage(`/spheres/${roomId}`)}>Sphere Tracker</button>
+                    <Link to={`/spheres/${roomId}`}>Sphere Tracker</Link>
                 </div>
             </div>
             {
@@ -217,7 +217,9 @@ function Room() {
                             <input type="text" id="input" name="Server command" placeholder="Server command" onKeyUp={handleKeyUp} style={{width: '500px', marginBottom: '10px', marginRight: '20px'}} />
                             <Link to={`/log/${roomId}`}>Full log</Link>
                         </div>
-                    ) : (<div></div>)
+                    ) : (
+                        <Link to={`/log/${roomId}`}>Full log</Link>
+                    )
                 }
                 <div style={{marginBottom: '20px', height: '500px', overflowY: 'scroll'}} ref={bottomRef}>
                     {log.map((line, index) => (
