@@ -1,6 +1,9 @@
 import os
 import secrets
 
+FRONTEND_URL = os.environ.get('FRONTEND_URL',
+                               'http://localhost:5173')
+
 SECRET_KEY = os.environ.get('SESSION_KEY',
                             default=''.join(secrets.token_hex(16)))
 

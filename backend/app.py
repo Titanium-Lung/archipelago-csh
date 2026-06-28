@@ -23,9 +23,10 @@ from dotenv import load_dotenv # type: ignore
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "http://localhost:5173"}}, supports_credentials=True)
 
 app.config.from_pyfile(os.path.join(os.getcwd(), 'config.env.py'))
+
+CORS(app, resources={r"/*": {"origins": app.config['FRONTEND_URL']}}, supports_credentials=True)
 
 app.secret_key = app.config['SECRET_KEY']
 
@@ -71,7 +72,7 @@ Login with CSH
 @app.route("/login")
 @_AUTH.oidc_auth('default')
 def login():
-    return redirect("http://localhost:5173")
+    return redirect(app.config['FRONTEND_URL'])
 
 """
 Login with Google
@@ -79,7 +80,7 @@ Login with Google
 @app.route("/googlelogin")
 @_AUTH.oidc_auth('google')
 def google_login():
-    return redirect("http://localhost:5173")
+    return redirect(app.config['FRONTEND_URL'])
 
 """
 Logout 
@@ -87,7 +88,7 @@ Logout
 @app.route("/logout")
 @_AUTH.oidc_logout
 def logout():
-    return redirect("http://localhost:5173")
+    return redirect(app.config['FRONTEND_URL'])
 
 """
 Gets data of user if they are logged in
