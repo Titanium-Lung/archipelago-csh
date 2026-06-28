@@ -140,15 +140,23 @@ def upload_file():
     
     if room_port is None:
         return jsonify({"error": "Could not find an available port in range, try again later"}), 500
+    
+    if not os.path.isdir(UPLOAD_FOLDER):
+        return jsonify({"error": "uploads folder does not exist"}), 500
 
     zip_save_path = os.path.join(UPLOAD_FOLDER, file.filename)
+    extract_folder_path = zip_save_path[:zip_save_path.index('.')]
+
+    if os.path.isdir(extract_folder_path):
+        return jsonify({"warning": "folder with the same name already exists"}), 409
+
     file.save(zip_save_path)
 
     room_id = str(uuid.uuid4())
     state: ServerState = ServerState()
 
     state.port = room_port
-    state.extract_folder_path = zip_save_path[:zip_save_path.index('.')]
+    state.extract_folder_path = extract_folder_path
 
     filename = None
 
