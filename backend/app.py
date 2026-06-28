@@ -141,6 +141,7 @@ def upload_file():
     if room_port is None:
         return jsonify({"error": "Could not find an available port in range, try again later"}), 500
     
+    # Check if folders exist for testing
     if not os.path.isdir(UPLOAD_FOLDER):
         return jsonify({"error": "uploads folder does not exist"}), 500
 
