@@ -30,8 +30,6 @@ app.config.from_pyfile(os.path.join(os.getcwd(), 'config.env.py'))
 
 CORS(app, resources={r"/*": {"origins": app.config['FRONTEND_URL']}}, supports_credentials=True)
 
-app.register_blueprint(api, url_prefix='/api')
-
 app.secret_key = app.config['SECRET_KEY']
 
 _CONFIG = ProviderConfiguration(
@@ -664,6 +662,8 @@ def cleanup():
             state.running_process.wait()
 
 atexit.register(cleanup)
+
+app.register_blueprint(api, url_prefix='/api')
 
 if __name__ == "__main__":
     with app.app_context():
