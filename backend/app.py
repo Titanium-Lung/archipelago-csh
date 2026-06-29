@@ -290,10 +290,6 @@ def delete_room(room_id):
     
     shutil.rmtree(state.extract_folder_path)
 
-    # logpath = f"{state.extract_folder_path}/server-log.txt"
-
-    # os.remove(logpath)
-
     rooms.pop(room_id)
 
     return jsonify({"message": "successfully deleted"})
