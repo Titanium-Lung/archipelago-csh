@@ -43,7 +43,7 @@ _GOOGLE_CONFIG = ProviderConfiguration(
 
 _AUTH = OIDCAuthentication({'default': _CONFIG, 'google': _GOOGLE_CONFIG}, app)
 
-UPLOAD_FOLDER = "uploads"
+UPLOAD_FOLDER = "/uploads"
 ARCHIPELAGO_SERVER = "Archipelago-0.6.7/MultiServer.py"
 SERVER_PORT = 38281
 PORT_RANGE = 20
