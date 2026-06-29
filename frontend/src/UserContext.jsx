@@ -14,7 +14,7 @@ export function UserProvider({ children }) {
                 const data = await response.json()
                 setUser(data)
             } else if (window.location.pathname !== '/login') {
-                window.location.href = "http://localhost:5173/login"
+                window.location.href = "https://archipelago-dev.cs.house/login"
             }
         }
         fetchUser()
