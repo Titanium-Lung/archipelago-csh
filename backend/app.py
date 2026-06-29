@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_file, redirect, session
+from flask import Flask, request, jsonify, send_file, redirect, session, Blueprint
 from flask_cors import CORS
 import os
 import subprocess
@@ -24,9 +24,13 @@ load_dotenv()
 
 app = Flask(__name__)
 
+api = Blueprint('api', __name__)
+
 app.config.from_pyfile(os.path.join(os.getcwd(), 'config.env.py'))
 
 CORS(app, resources={r"/*": {"origins": app.config['FRONTEND_URL']}}, supports_credentials=True)
+
+app.register_blueprint(api, url_prefix='/api')
 
 app.secret_key = app.config['SECRET_KEY']
 
@@ -69,7 +73,7 @@ class ServerState():
 """
 Login with CSH 
 """
-@app.route("/login")
+@api.route("/login")
 @_AUTH.oidc_auth('default')
 def login():
     return redirect(app.config['FRONTEND_URL'])
@@ -77,7 +81,7 @@ def login():
 """
 Login with Google
 """
-@app.route("/googlelogin")
+@api.route("/googlelogin")
 @_AUTH.oidc_auth('google')
 def google_login():
     return redirect(app.config['FRONTEND_URL'])
@@ -85,7 +89,7 @@ def google_login():
 """
 Logout 
 """
-@app.route("/logout")
+@api.route("/logout")
 @_AUTH.oidc_logout
 def logout():
     return redirect(app.config['FRONTEND_URL'])
@@ -93,7 +97,7 @@ def logout():
 """
 Gets data of user if they are logged in
 """
-@app.route("/user")
+@api.route("/user")
 def user_info():
     user = session.get('userinfo')
     if user is None:
@@ -109,7 +113,7 @@ def user_info():
 """
 Handles upload of zip file to start an archipelago server 
 """
-@app.route("/upload", methods=["POST"])
+@api.route("/upload", methods=["POST"])
 @_AUTH.oidc_auth('default')
 def upload_file():
     global rooms
@@ -257,7 +261,7 @@ def upload_file():
 """
 Get all the running rooms and relevant info
 """
-@app.route("/rooms")
+@api.route("/rooms")
 def get_all_rooms():
     current_rooms = []
     
@@ -274,7 +278,7 @@ def get_all_rooms():
 """
 Stops specified room and deletes all files associated with it
 """
-@app.route("/delete/<room_id>", methods=["DELETE"])
+@api.route("/delete/<room_id>", methods=["DELETE"])
 @_AUTH.oidc_auth('default')
 def delete_room(room_id):
     if room_id not in rooms:
@@ -302,7 +306,7 @@ def delete_room(room_id):
 """
 Request to restart the room. Does nothing if it's currently running 
 """
-@app.route("/restart/<room_id>", methods=["PUT"])
+@api.route("/restart/<room_id>", methods=["PUT"])
 def restart_server(room_id):
     if room_id not in rooms:
         return jsonify({"error": "No archipelago game with this id"}), 404
@@ -373,7 +377,7 @@ def restart_server(room_id):
 """
 Get the contents of the log file of the specified room
 """
-@app.route("/log/<room_id>")
+@api.route("/log/<room_id>")
 def stream_log(room_id):
     if room_id not in rooms:
         return jsonify({"error": "No archipelago game with this id"}), 404
@@ -394,7 +398,7 @@ def stream_log(room_id):
 """
 Get the port and admin of the specified room
 """
-@app.route("/room/<room_id>")
+@api.route("/room/<room_id>")
 def room_info(room_id):
     if room_id not in rooms:
             return jsonify({"error": "No archipelago game with this id"}), 404
@@ -412,7 +416,7 @@ def room_info(room_id):
 """
 Write the given command to stdin of the process of the specified room
 """
-@app.route("/command/<room_id>", methods=["POST"])
+@api.route("/command/<room_id>", methods=["POST"])
 @_AUTH.oidc_auth('default')
 def server_command(room_id):
     if room_id not in rooms:
@@ -440,7 +444,7 @@ def server_command(room_id):
 """
 Gets all the players participating in the multiworld and relevant data
 """
-@app.route("/players/<room_id>")
+@api.route("/players/<room_id>")
 def get_players(room_id):
     if room_id not in rooms:
         return jsonify({"error": "No archipelago game with this id"}), 404
@@ -457,7 +461,7 @@ def get_players(room_id):
 """
 Sends the requested file 
 """
-@app.route("/players/<room_id>/<filename>")
+@api.route("/players/<room_id>/<filename>")
 def send_patch_file(room_id, filename):
     if room_id not in rooms:
         return jsonify({"error": "No archipelago game with this id"}), 404
@@ -479,7 +483,7 @@ Gets the data for each player in the multiworld
 Data includes slot id, name, game, checks gotten, total checks, and last activity (most recent check)
 Also gets all hints
 """
-@app.route("/tracker/<room_id>")
+@api.route("/tracker/<room_id>")
 def multiworld_data(room_id): 
     if room_id not in rooms:
         return jsonify({"error": "No archipelago game with this id"}), 404
@@ -496,7 +500,7 @@ def multiworld_data(room_id):
 """
 Gets received items, locations, and hints for given slot
 """
-@app.route("/tracker/<room_id>/<int:slot>")
+@api.route("/tracker/<room_id>/<int:slot>")
 def individual_tracker_data(room_id, slot):
     if room_id not in rooms:
         return jsonify({"error": "No archipelago game with this id"}), 404
@@ -513,7 +517,7 @@ def individual_tracker_data(room_id, slot):
 """
 Gets every item received by every player
 """
-@app.route("/spheres/<room_id>")
+@api.route("/spheres/<room_id>")
 def sphere_items(room_id):
     if room_id not in rooms:
         return jsonify({"error": "No archipelago game with this id"}), 404

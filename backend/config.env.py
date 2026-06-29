@@ -12,7 +12,7 @@ OIDC_ISSUER = os.environ.get('OIDC_ISSUER',
                              'https://sso.csh.rit.edu/auth/realms/csh')
 
 OIDC_REDIRECT_URI = os.environ.get('OIDC_REDIRECT_URI',
-                                   'http://localhost:5001/redirect_uri')
+                                   'http://localhost:5001//api/redirect_uri')
 OIDC_CLIENT_CONFIG = {
     'client_id': os.environ.get('OIDC_CLIENT_ID', ' '),
     'client_secret': os.environ.get('OIDC_CLIENT_SECRET', ' '),
