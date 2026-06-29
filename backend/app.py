@@ -147,9 +147,6 @@ def upload_file():
     if not os.path.isdir(UPLOAD_FOLDER):
         return jsonify({"error": "uploads folder does not exist"}), 500
 
-    if not os.path.isdir("logs"):
-        return jsonify({"error": "logs folder does not exist"}), 500
-
     zip_save_path = os.path.join(UPLOAD_FOLDER, file.filename)
     extract_folder_path = zip_save_path[:zip_save_path.index('.')]
 
@@ -229,7 +226,7 @@ def upload_file():
         stdin=subprocess.PIPE,
     )
 
-    logpath = f"logs/{room_id}log.txt"
+    logpath = f"{state.extract_folder_path}/server-log.txt"
 
     # Make the log file exist (don't know if I need to do this)
     with open(logpath, "w") as f:
@@ -293,9 +290,9 @@ def delete_room(room_id):
     
     shutil.rmtree(state.extract_folder_path)
 
-    logpath = f"logs/{room_id}log.txt"
+    # logpath = f"{state.extract_folder_path}/server-log.txt"
 
-    os.remove(logpath)
+    # os.remove(logpath)
 
     rooms.pop(room_id)
 
@@ -353,7 +350,7 @@ def restart_server(room_id):
             stdin=subprocess.PIPE,
         )
 
-        logpath = f"logs/{room_id}log.txt"
+        logpath = f"{state.extract_folder_path}/server-log.txt"
 
         thread = threading.Thread(target=write_log, args=(state.running_process, logpath, room_id))
         thread.daemon = True
@@ -385,7 +382,7 @@ def stream_log(room_id):
     if state.arch_file_path is None: 
         return jsonify({"error": "no archipelago game loaded"}), 404
 
-    f = open(f"logs/{room_id}log.txt", "r")
+    f = open(f"{state.extract_folder_path}/server-log.txt", "r")
     
     result = { 
         "lines": f.readlines()
@@ -593,7 +590,7 @@ def restart_all():
                             stdin=subprocess.PIPE,
                         )
 
-                        logpath = f"logs/{room_id}log.txt"
+                        logpath = f"{state.extract_folder_path}/server-log.txt"
 
                         thread = threading.Thread(target=write_log, args=(state.running_process, logpath, room_id))
                         thread.daemon = True
