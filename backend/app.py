@@ -224,6 +224,7 @@ def upload_file():
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         stdin=subprocess.PIPE,
+        env={**os.environ, "HOME": UPLOAD_FOLDER}
     )
 
     logpath = f"{state.extract_folder_path}/server-log.txt"
@@ -344,6 +345,7 @@ def restart_server(room_id):
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             stdin=subprocess.PIPE,
+            env={**os.environ, "HOME": UPLOAD_FOLDER}
         )
 
         logpath = f"{state.extract_folder_path}/server-log.txt"
@@ -584,6 +586,7 @@ def restart_all():
                             stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT,
                             stdin=subprocess.PIPE,
+                            env={**os.environ, "HOME": UPLOAD_FOLDER}
                         )
 
                         logpath = f"{state.extract_folder_path}/server-log.txt"
