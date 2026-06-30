@@ -11,6 +11,7 @@ COPY . .
 # Create missing folders that archipelago expects
 RUN mkdir -p /app/Archipelago-0.6.7/Players
 RUN mkdir -p /app/Archipelago-0.6.7/data/options
+RUN mkdir -p /app/Archipelago-0.6.7/data/sprites
 
 EXPOSE 5001
 
