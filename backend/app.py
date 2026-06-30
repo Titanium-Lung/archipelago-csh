@@ -663,7 +663,6 @@ app.register_blueprint(api, url_prefix='/api')
 
 if __name__ == "__main__":
     with app.app_context():
-        # os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-        # os.makedirs("logs", exist_ok=True)
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
         restart_all()
     app.run(debug=True, port=5001, use_reloader=False, host="0.0.0.0")
