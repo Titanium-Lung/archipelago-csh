@@ -10,8 +10,13 @@ services:
       - ./backend/uploads:/app/uploads
   
   frontend:
-    build: ./frontend
+    build: 
+      context: ./frontend
+      target: build
+    command: npm run dev -- --host
     ports: 
       - "5173:5173"
+    env_file:
+      - ./frontend/.env
     depends_on:
       - backend
