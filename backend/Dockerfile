@@ -12,6 +12,7 @@ COPY . .
 RUN mkdir -p /app/Archipelago-0.6.7/Players
 RUN mkdir -p /app/Archipelago-0.6.7/data/options
 RUN mkdir -p /app/Archipelago-0.6.7/data/sprites
+RUN mkdir -p app/Archipelago-0.6.7/data/lua
 
 EXPOSE 5001
 
