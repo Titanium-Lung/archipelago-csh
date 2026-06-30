@@ -11,15 +11,13 @@ Clone this project, then go into the `backend` folder and create a `.env` file.
 This contains: 
 
 ```
-OIDC_ISSUER=https://sso.csh.rit.edu/auth/realms/csh
-OIDC_REDIRECT_URI=http://localhost:5001/redirect_uri
 OIDC_CLIENT_ID=client_id
 OIDC_CLIENT_SECRET=client_secret
 ```
 
-Reach out to an RTP for the client id and secret. 
+Reach out to an RTP (or this project's owner) for the client id and secret. 
 
-In the `frontend` folder, create a `.env` file with: `VITE_BACKEND_URL=http://localhost:5001`. 
+In the `frontend` folder, create a `.env` file with: `VITE_BACKEND_URL=http://localhost:5001/api`. 
 
 This URL can be changed if you prefer, but the backend Dockerfile and docker-compose.yml have port 5001 exposed. 
 
