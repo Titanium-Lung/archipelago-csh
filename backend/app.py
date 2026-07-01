@@ -151,7 +151,7 @@ def upload_file():
     extract_folder_path = zip_save_path[:zip_save_path.index('.')]
 
     if os.path.isdir(extract_folder_path):
-        return jsonify({"warning": "folder with the same name already exists"}), 409
+        return jsonify({"error": "Archipelago game with the same name already exists. Please change the name of your zip file."}), 409
 
     file.save(zip_save_path)
 
