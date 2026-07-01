@@ -13,6 +13,7 @@ import uuid
 import random
 import shutil
 import json
+import pytz # type: ignore
 from datetime import datetime
 from flask_pyoidc.flask_pyoidc import OIDCAuthentication # type: ignore
 from flask_pyoidc.provider_configuration import ProviderConfiguration, ClientMetadata # type: ignore
@@ -239,7 +240,7 @@ def upload_file():
     thread.start()
 
     state.admin = session.get('userinfo').get('uuid')
-    state.start = datetime.now()
+    state.start = datetime.now(pytz.timezone('America/New_York'))
 
     rooms[room_id] = state
 
