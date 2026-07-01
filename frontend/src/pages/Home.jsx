@@ -164,8 +164,8 @@ function Home() {
                                     {rooms.map((room, index) => (
                                         <tr key={index}>
                                             <td>{room.port}</td>
-                                            <td><Link to={`http://localhost:5173/room/${room.room_id}`}>Room</Link></td>
-                                            <td><Link to={`http://localhost:5173/multitracker/${room.room_id}`}>Tracker</Link></td>
+                                            <td><Link to={`/room/${room.room_id}`}>Room</Link></td>
+                                            <td><Link to={`/multitracker/${room.room_id}`}>Tracker</Link></td>
                                             <td>{room.start}</td>
                                             <td>
                                                 {
