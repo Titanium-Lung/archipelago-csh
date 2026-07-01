@@ -30,6 +30,11 @@ function Tracker() {
     const [filteredHints, setFilteredHints] = useState([])
     const [filterHints, setFilterHints] = useState('')
 
+    // Consts for collapsing tables
+    const [collapseItems, setCollapseItems] = useState(false)
+    const [collapseLocations, setCollapseLocations] = useState(false)
+    const [collapseHints, setCollapseHints] = useState(false)
+
     useEffect(() => {
         async function fetchItems() {
             const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/tracker/${roomId}/${slot}`, {
@@ -180,23 +185,23 @@ function Tracker() {
         }
     }
 
-    const sortedItems = itemsSortedColumn ? [...filteredItems].sort((a, b) => {
+    const sortedItems = collapseItems ? [] : (itemsSortedColumn ? [...filteredItems].sort((a, b) => {
         if (a[itemsSortedColumn] < b[itemsSortedColumn]) return itemsSortDirection === "asc" ? -1 : 1
         if (a[itemsSortedColumn] > b[itemsSortedColumn]) return itemsSortDirection === "asc" ? 1 : -1
         return 0
-    }) : filteredItems
+    }) : filteredItems)
 
-    const sortedLocations = locationsSortedColumn ? [...filteredLocations].sort((a, b) => {
+    const sortedLocations = collapseLocations ? [] : (locationsSortedColumn ? [...filteredLocations].sort((a, b) => {
         if (a[locationsSortedColumn] < b[locationsSortedColumn]) return locationsSortDirection === "asc" ? -1 : 1
         if (a[locationsSortedColumn] > b[locationsSortedColumn]) return locationsSortDirection === "asc" ? 1 : -1
         return 0
-    }) : filteredLocations
+    }) : filteredLocations)
 
-    const sortedHints = hintsSortedColumn ? [...filteredHints].sort((a, b) => {
+    const sortedHints = collapseHints ? [] : (hintsSortedColumn ? [...filteredHints].sort((a, b) => {
         if (a[hintsSortedColumn] < b[hintsSortedColumn]) return hintsSortDirection === "asc" ? -1 : 1
         if (a[hintsSortedColumn] > b[hintsSortedColumn]) return hintsSortDirection === "asc" ? 1 : -1
         return 0
-    }) : filteredHints
+    }) : filteredHints)
 
     return (
         <div>
@@ -242,6 +247,7 @@ function Tracker() {
             <h1 style={{textAlign: 'center'}}>Individual Tracker</h1>
             <div className="mx-md-5 m-3">
                 <input type="text" id="input" name="search" placeholder="Search" value={itemFilter} onChange={e => setItemFilter(e.target.value)} />
+                <button className="btn btn-primary" onClick={() => collapseItems ? setCollapseItems(false) : setCollapseItems(true)} style={{ marginLeft: '10px' }}>Collapse</button>
             </div>
             <div className="d-flex justify-content-center mx-md-5 table-contained">
                 <table className="table table-bordered table-hover">
@@ -266,9 +272,10 @@ function Tracker() {
             <h2 style={{textAlign: 'center'}}>Location Checks</h2>
             <div className="mx-md-5 m-3">
                 <input type="text" id="input" name="search" placeholder="Search" value={locationFilter} onChange={e => setLocationFilter(e.target.value)} />
+                <button className="btn btn-primary" onClick={() => collapseLocations ? setCollapseLocations(false) : setCollapseLocations(true)} style={{ marginLeft: '10px' }}>Collapse</button>
             </div>
             {
-                locations.length > 0 ? (
+                locations.length > 0 || collapseLocations ? (
                     <div className="d-flex justify-content-center mx-md-5 table-contained">
                         <table className="table table-bordered table-hover">
                             <thead>
@@ -303,6 +310,7 @@ function Tracker() {
             <h2 style={{textAlign: 'center'}}>Hints</h2>
             <div className="mx-md-5 m-3">
                 <input type="text" id="input" name="search" placeholder="Search" value={filterHints} onChange={e => setFilterHints(e.target.value)} />
+                <button className="btn btn-primary" onClick={() => collapseHints ? setCollapseHints(false) : setCollapseHints(true)} style={{ marginLeft: '10px' }}>Collapse</button>
             </div>
             <div className="d-flex justify-content-center mx-md-5 table-contained">
                 <table className="table table-bordered table-hover">

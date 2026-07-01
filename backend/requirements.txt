@@ -37,3 +37,6 @@ Werkzeug==3.1.8
 setuptools>=75,<81
 
 -r Archipelago-0.6.7/requirements.txt
+
+# pip freeze > requirements.txt
+# Reminder to readd setuptools and Archipelago source requirements
