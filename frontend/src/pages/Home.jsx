@@ -157,6 +157,7 @@ function Home() {
                                         <th>Room Page</th>
                                         <th>Multitracker</th>
                                         <th>Start</th>
+                                        <th>Running?</th>
                                         <th>Delete</th>
                                     </tr>
                                 </thead>
@@ -167,6 +168,14 @@ function Home() {
                                             <td><Link to={`/room/${room.room_id}`}>Room</Link></td>
                                             <td><Link to={`/multitracker/${room.room_id}`}>Tracker</Link></td>
                                             <td>{room.start}</td>
+                                            <td>
+                                                {
+                                                    {
+                                                        true: "✔",
+                                                        false: "✖",
+                                                    }[room.running] ?? "?"
+                                                }
+                                            </td>
                                             <td>
                                                 {
                                                     user?.uuid === room.admin_uuid ? (

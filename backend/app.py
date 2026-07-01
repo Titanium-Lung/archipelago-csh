@@ -266,7 +266,12 @@ def get_all_rooms():
         room_info = {}
         room_info['room_id'] = room_id
         room_info['port'] = rooms[room_id].port
-        room_info["start"] = rooms[room_id].start.strftime('%d/%m/%y %H:%M')
+        room_info['start'] = rooms[room_id].start.strftime('%d/%m/%y %H:%M')
+        if rooms[room_id].running_process is None:
+            room_info['running'] = False
+        else:
+            room_info['running'] = True
+
         room_info['admin_uuid'] = rooms[room_id].admin
         current_rooms.append(room_info)
     
