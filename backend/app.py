@@ -564,7 +564,7 @@ def restart_all():
                         state.slotinfos = {int(k): v for k, v in data["slotinfos"].items()}
                         state.port = data["port"]
                         state.admin = data["admin"]
-                        state.start = datetime.fromtimestamp(data["start"])
+                        state.start = datetime.fromtimestamp(data["start"], pytz.timezone('America/New_York'))
                         state.released_games = data["released_games"]
 
                         # Attempt to connect to the same port. If unavailable, try new ones
