@@ -49,7 +49,7 @@ UPLOAD_FOLDER = app.config['UPLOAD_FOLDER']
 ARCHIPELAGO_SERVER = "Archipelago-0.6.7/MultiServer.py"
 SERVER_PORT = 38281
 PORT_RANGE = 1
-RETRY = 2
+RETRY = 1
 SHUTDOWN_TIME = 7200
 
 rooms = {}
