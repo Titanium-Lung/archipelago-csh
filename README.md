@@ -51,6 +51,10 @@ In the `frontend`, run `npm run dev`.
 
 Then visit http://localhost:5173 to view the website. Note that logging in with Google will not work. 
 
+## Contributing
+
+To contribute to this project, first create a fork of this repo and clone it on your computer. Make changes and test locally, then create a Pull Request to the `dev` branch. 
+
 ## Architecture
 
 This project uses a React frontend to make calls to a Flask backend. 
