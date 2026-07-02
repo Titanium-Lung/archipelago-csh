@@ -48,9 +48,9 @@ _AUTH = OIDCAuthentication({'default': _CONFIG, 'google': _GOOGLE_CONFIG}, app)
 
 UPLOAD_FOLDER = app.config['UPLOAD_FOLDER']
 ARCHIPELAGO_SERVER = "Archipelago-0.6.7/MultiServer.py"
-SERVER_PORT = 38281
-PORT_RANGE = 1
-RETRY = 1
+SERVER_PORT = app.config['SERVER_PORT']
+PORT_RANGE = app.config['PORT_RANGE']
+RETRY = app.config['RETRY']
 SHUTDOWN_TIME = 7200
 
 rooms = {}

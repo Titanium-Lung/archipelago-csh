@@ -25,3 +25,10 @@ GOOGLE_CLIENT_CONFIG = {
 
 UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER',
                                "uploads")
+
+SERVER_PORT = os.environ.get('SERVER_PORT',
+                             38281)
+PORT_RANGE = os.environ.get('PORT_RANGE',
+                            20)
+RETRY = os.environ.get('RETRY',
+                       PORT_RANGE)
