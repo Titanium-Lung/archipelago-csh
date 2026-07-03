@@ -154,6 +154,7 @@ function Room() {
             </nav>
             <div style={{textAlign: 'center'}}>
                 <h1>Room</h1>
+                <p>This server shuts down automatically after 2 hours. Reload this page to restart it.</p>
                 {
                     port != "" ? (
                         <div>
