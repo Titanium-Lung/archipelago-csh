@@ -14,6 +14,7 @@ function Room() {
     const [log, setLog] = useState(["Populating log..."])
     const [players, setPlayers] = useState([])
     const [admin, setAdmin] = useState('')
+    const [running, setRunning] = useState(false)
 
     useEffect(() => {
         async function restartServer() {
@@ -41,6 +42,7 @@ function Room() {
             if (response.ok) {
                 setPort(result.port)
                 setAdmin(result.admin)
+                setRunning(result.running)
             } 
         }
         fetchRoom()
@@ -154,6 +156,7 @@ function Room() {
             </nav>
             <div style={{textAlign: 'center'}}>
                 <h1>Room</h1>
+                <p>This server shuts down automatically after 2 hours. Reload this page to restart it.</p>
                 {
                     port != "" ? (
                         <div>
