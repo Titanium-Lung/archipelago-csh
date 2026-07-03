@@ -6,7 +6,7 @@ import os
 import zlib
 from datetime import datetime
 from Utils import restricted_loads # type: ignore
-from app import ServerState
+from server_state import ServerState
 
 """
 Returns all of the players in the multiworld and relevant info

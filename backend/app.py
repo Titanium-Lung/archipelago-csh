@@ -19,6 +19,7 @@ from flask_pyoidc.flask_pyoidc import OIDCAuthentication # type: ignore
 from flask_pyoidc.provider_configuration import ProviderConfiguration, ClientMetadata # type: ignore
 sys.path.insert(0, "Archipelago-0.6.7")
 import multidata
+from server_state import ServerState
 from Utils import restricted_loads # type: ignore
 from dotenv import load_dotenv # type: ignore
 load_dotenv()
@@ -53,21 +54,8 @@ PORT_RANGE = app.config['PORT_RANGE']
 RETRY = app.config['RETRY']
 SHUTDOWN_TIME = 7200
 
+# Everything is stored in a dictionary, which breaks when multiple worker threads are used (but I just use 1)
 rooms = {}
-
-class ServerState():
-    def __init__(self):
-        self.running_process = None
-        self.extract_folder_path = None
-        self.arch_file_path = None
-        self.location_info = {}
-        self.ids = {}
-        self.slotinfos = {}
-        self.port = None
-        self.restarting = False
-        self.admin = None
-        self.start = None
-        self.released_games = {} # dictionary and not set for json encoding lol
 
 """
 Login with CSH 
@@ -134,11 +122,9 @@ def upload_file():
             s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             try:
                 s.bind(("localhost", port))
-                print(f"Port is {port}")
                 room_port = port
                 break
             except OSError:
-                print(f"Failed to bind port: {port}")
                 continue
     
     if room_port is None:
@@ -334,10 +320,8 @@ def restart_server(room_id):
                 s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                 try:
                     s.bind(("localhost", port))
-                    print(f"Port is {port}")
                     state.port = port
                 except OSError:
-                    print(f"Failed to bind port {port}")
                     state.port = None
                     if first:
                         ports = ports + random.sample(range(SERVER_PORT, SERVER_PORT+PORT_RANGE), RETRY)
@@ -575,10 +559,8 @@ def restart_all():
                                 s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                                 try:
                                     s.bind(("localhost", port))
-                                    print(f"Port is {port}")
                                     state.port = port
                                 except OSError:
-                                    print(f"Failed to bind port {port}")
                                     state.port = None
                                     if first:
                                         ports = ports + random.sample(range(SERVER_PORT, SERVER_PORT+PORT_RANGE), RETRY)
@@ -667,8 +649,9 @@ atexit.register(cleanup)
 
 app.register_blueprint(api, url_prefix='/api')
 
+# Note that this is not the best way to do setup like this, but I'm only using 1 worker thread with gunicorn
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+restart_all()
+
 if __name__ == "__main__":
-    with app.app_context():
-        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-        restart_all()
     app.run(debug=True, port=5001, use_reloader=False, host="0.0.0.0")
