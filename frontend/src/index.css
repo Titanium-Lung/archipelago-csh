@@ -17,3 +17,8 @@ th {
 .btn-secondary {
   background-color: white !important;
 }
+
+.individual-hint-player {
+  font-weight: bold;
+  color: #b0197e !important;
+}

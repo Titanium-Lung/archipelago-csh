@@ -330,14 +330,14 @@ function Tracker() {
                             <tr key={index}>
                                 {
                                     slotName === hint.finding_player ? (
-                                        <td style={{ fontWeight: 'bold', color: '#b0197e' }}>{hint.finding_player}</td>
+                                        <td className="individual-hint-player">{hint.finding_player}</td>
                                     ) : (
                                         <td>{hint.finding_player}</td>
                                     )
                                 }
                                 {
                                     slotName === hint.receiving_player ? (
-                                        <td style={{ fontWeight: 'bold', color: '#b0197e' }}>{hint.receiving_player}</td>
+                                        <td className="individual-hint-player">{hint.receiving_player}</td>
                                     ) : (
                                         <td>{hint.receiving_player}</td>
                                     )
