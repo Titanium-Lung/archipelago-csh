@@ -117,8 +117,8 @@ function Sphere() {
                     </ul>
                 </div>
             </nav>
-            <h1 style={{textAlign: 'center'}}>Sphere tracker</h1>
-            <p className="mx-3">This tracker lists already found locations by their logical access sphere. 
+            <h1 className="text-center">Sphere tracker</h1>
+            <p className="mx-3 text-center">This tracker lists already found locations by their logical access sphere. 
                 It ignores items that cannot be sent and will therefore differ from the sphere numbers in the spoiler playthrough.</p>
             <div className="mx-md-5 m-3">
                 <input type="text" id="input" name="search" placeholder="Search" value={filter} onChange={e => setFilter(e.target.value)} />
