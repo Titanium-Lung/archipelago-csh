@@ -328,8 +328,20 @@ function Tracker() {
                     <tbody>
                         {sortedHints.map((hint, index) => (
                             <tr key={index}>
-                                <td>{hint.finding_player}</td>
-                                <td>{hint.receiving_player}</td>
+                                {
+                                    slotName === hint.finding_player ? (
+                                        <td style={{ fontWeight: 'bold', color: '#b0197e' }}>{hint.finding_player}</td>
+                                    ) : (
+                                        <td>{hint.finding_player}</td>
+                                    )
+                                }
+                                {
+                                    slotName === hint.receiving_player ? (
+                                        <td style={{ fontWeight: 'bold', color: '#b0197e' }}>{hint.receiving_player}</td>
+                                    ) : (
+                                        <td>{hint.receiving_player}</td>
+                                    )
+                                }
                                 <td>{hint.item}</td>
                                 <td>{hint.location}</td>
                                 <td>{hint.game}</td>
