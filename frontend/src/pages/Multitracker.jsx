@@ -230,7 +230,7 @@ function Multitracker() {
                                     <td>All Games</td>
                                     <td>{`${totals.games_complete}/${totals.num_players_not_released} [${totals.num_players}] Complete`}</td>
                                     <td>{`${totals.total_checked}/${totals.total_checks}`}</td>
-                                    <td>{(totals.total_checked/totals.total_checks).toFixed(2)}</td>
+                                    <td>{(totals.total_checked/totals.total_checks*100).toFixed(2)}</td>
                                     <td>{totals.recent_activity}</td>
                                 </tr>
                             </tbody>
