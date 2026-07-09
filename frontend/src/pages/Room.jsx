@@ -159,6 +159,7 @@ function Room() {
                     port != "" ? (
                         <div>
                             <p>Port: {port}</p>
+                            <p>Connect to archipelago.csh.rit.edu:{port}</p>
                         </div>
                     ) : (
                         <div>
