@@ -159,7 +159,14 @@ function Room() {
                 {
                     port != "" ? (
                         <div>
-                            <p>Port: {port}</p>
+                            <p className="d-flex gap-2 align-items-center justify-content-center">
+                                Port: <strong>{port}</strong> 
+                                <button className="btn btn-copy" onClick={() => {navigator.clipboard.writeText(port)}}>Copy</button>
+                            </p>
+                            <p className="d-flex gap-2 align-items-center justify-content-center">
+                                Connect to: <strong>archipelago.csh.rit.edu:{port}</strong> 
+                                <button className="btn btn-copy" onClick={() => {navigator.clipboard.writeText(`archipelago.csh.rit.edu:${port}`)}}>Copy</button>
+                            </p>
                         </div>
                     ) : (
                         <div>
