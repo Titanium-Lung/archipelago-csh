@@ -18,7 +18,9 @@ function Home() {
     useEffect(() => {
         async function fetchRooms() {
             const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/rooms`, {
-                method: "GET"
+                method: "PUT",
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ data: Intl.DateTimeFormat().resolvedOptions()})
             })
 
             const result = await response.json()
