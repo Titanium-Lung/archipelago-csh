@@ -1,4 +1,5 @@
 annotated-types==0.7.0
+babel==2.18.0
 blinker==1.9.0
 certifi==2026.5.20
 cffi==2.0.0
@@ -31,14 +32,14 @@ pytz==2026.2
 PyYAML==6.0.3
 requests==2.34.2
 schema==0.7.8
+setuptools==80.10.2
 six==1.17.0
 typing-inspection==0.4.2
 typing_extensions==4.15.0
 urllib3==2.7.0
 Werkzeug==3.1.8
-setuptools>=75,<81
 
 -r Archipelago-0.6.7/requirements.txt
 
 # pip freeze > requirements.txt
-# Reminder to readd setuptools and Archipelago source requirements
+# Reminder to readd Archipelago source requirements
