@@ -8,6 +8,11 @@ th {
   top: 0;
 }
 
+[data-bs-theme="dark"] th {
+  background-color: #b0197e !important;
+  color: white !important;
+}
+
 .navbar-sticky {
   position: sticky !important;
   top: 0 !important;
@@ -16,6 +21,14 @@ th {
 
 .btn-secondary {
   background-color: white !important;
+}
+
+.btn-secondary:hover {
+  background-color: gray !important;
+}
+
+.btn-secondary:active {
+  background-color: rgb(145, 145, 145) !important;
 }
 
 .individual-hint-player {
