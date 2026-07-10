@@ -20,6 +20,7 @@ function Settings() {
 
     return (
         <div>
+            <title>Settings</title>
             <nav className="navbar navbar-expand-lg navbar-dark navbar-sticky bg-primary px-3 px-md-5 mb-4">
                 <a className="navbar-brand" href="/">
                     <img src={logo} style={{ height: "40px", width: "auto" }} /> Archipelago
