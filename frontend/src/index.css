@@ -44,6 +44,19 @@ th {
   background-color: rgb(162, 162, 162) !important;
 }
 
+[data-bs-theme="dark"] .btn-copy {
+  background-color: rgb(129, 129, 129) !important;
+  border: none !important;
+}
+
+[data-bs-theme="dark"] .btn-copy:hover {
+  background-color: rgb(92, 92, 92) !important;
+}
+
+[data-bs-theme="dark"] .btn-copy:active {
+  background-color: rgb(62, 62, 62) !important;
+}
+
 .individual-hint-player {
   font-weight: bold;
   color: #b0197e !important;
