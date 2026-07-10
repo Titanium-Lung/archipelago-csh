@@ -110,6 +110,7 @@ function Sphere() {
                             <div className="dropdown-menu" aria-labelledby="user01">
                                 <a className="dropdown-item" href="https://github.com/Titanium-Lung/archipelago-csh/issues">Report an issue</a>
                                 <a className="dropdown-item" href={`https://profiles.csh.rit.edu/user/${user?.username}`}>Profile</a>
+                                <a className="dropdown-item" href="/settings">Settings</a>
                                 <div className="dropdown-divider"></div>
                                 <a className="dropdown-item" href={`${import.meta.env.VITE_BACKEND_URL}/logout`}>Logout</a>
                             </div>

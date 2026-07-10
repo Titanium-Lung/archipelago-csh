@@ -8,6 +8,11 @@ th {
   top: 0;
 }
 
+[data-bs-theme="dark"] th {
+  background-color: #b0197e !important;
+  color: white !important;
+}
+
 .navbar-sticky {
   position: sticky !important;
   top: 0 !important;
@@ -16,6 +21,40 @@ th {
 
 .btn-secondary {
   background-color: white !important;
+}
+
+.btn-secondary:hover {
+  background-color: rgb(135, 135, 135) !important;
+}
+
+.btn-secondary:active {
+  background-color: rgb(145, 145, 145) !important;
+}
+
+.btn-copy {
+  background-color: rgb(229, 229, 229) !important;
+  border: none !important;
+}
+
+.btn-copy:hover {
+  background-color: rgb(192, 192, 192) !important;
+}
+
+.btn-copy:active {
+  background-color: rgb(162, 162, 162) !important;
+}
+
+[data-bs-theme="dark"] .btn-copy {
+  background-color: rgb(129, 129, 129) !important;
+  border: none !important;
+}
+
+[data-bs-theme="dark"] .btn-copy:hover {
+  background-color: rgb(92, 92, 92) !important;
+}
+
+[data-bs-theme="dark"] .btn-copy:active {
+  background-color: rgb(62, 62, 62) !important;
 }
 
 .individual-hint-player {

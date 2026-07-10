@@ -145,6 +145,7 @@ function Room() {
                             <div className="dropdown-menu" aria-labelledby="user01">
                                 <a className="dropdown-item" href="https://github.com/Titanium-Lung/archipelago-csh/issues">Report an issue</a>
                                 <a className="dropdown-item" href={`https://profiles.csh.rit.edu/user/${user?.username}`}>Profile</a>
+                                <a className="dropdown-item" href="/settings">Settings</a>
                                 <div className="dropdown-divider"></div>
                                 <a className="dropdown-item" href={`${import.meta.env.VITE_BACKEND_URL}/logout`}>Logout</a>
                             </div>
@@ -158,8 +159,14 @@ function Room() {
                 {
                     port != "" ? (
                         <div>
-                            <p>Port: {port}</p>
-                            <p>Connect to archipelago.csh.rit.edu:{port}</p>
+                            <p className="d-flex gap-2 align-items-center justify-content-center">
+                                Port: <strong>{port}</strong> 
+                                <button className="btn btn-copy" onClick={() => {navigator.clipboard.writeText(port)}}>Copy</button>
+                            </p>
+                            <p className="d-flex gap-2 align-items-center justify-content-center">
+                                Connect to: <strong>archipelago.csh.rit.edu:{port}</strong> 
+                                <button className="btn btn-copy" onClick={() => {navigator.clipboard.writeText(`archipelago.csh.rit.edu:${port}`)}}>Copy</button>
+                            </p>
                         </div>
                     ) : (
                         <div>

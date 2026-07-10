@@ -174,6 +174,7 @@ function Multitracker() {
                             <div className="dropdown-menu" aria-labelledby="user01">
                                 <a className="dropdown-item" href="https://github.com/Titanium-Lung/archipelago-csh/issues">Report an issue</a>
                                 <a className="dropdown-item" href={`https://profiles.csh.rit.edu/user/${user?.username}`}>Profile</a>
+                                <a className="dropdown-item" href="/settings">Settings</a>
                                 <div className="dropdown-divider"></div>
                                 <a className="dropdown-item" href={`${import.meta.env.VITE_BACKEND_URL}/logout`}>Logout</a>
                             </div>
@@ -230,7 +231,7 @@ function Multitracker() {
                                     <td>All Games</td>
                                     <td>{`${totals.games_complete}/${totals.num_players_not_released} [${totals.num_players}] Complete`}</td>
                                     <td>{`${totals.total_checked}/${totals.total_checks}`}</td>
-                                    <td>{(totals.total_checked/totals.total_checks).toFixed(2)}</td>
+                                    <td>{(totals.total_checked/totals.total_checks*100).toFixed(2)}</td>
                                     <td>{totals.recent_activity}</td>
                                 </tr>
                             </tbody>

@@ -18,7 +18,9 @@ function Home() {
     useEffect(() => {
         async function fetchRooms() {
             const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/rooms`, {
-                method: "GET"
+                method: "PUT",
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ data: Intl.DateTimeFormat().resolvedOptions()})
             })
 
             const result = await response.json()
@@ -117,6 +119,7 @@ function Home() {
                             <div className="dropdown-menu" aria-labelledby="user01">
                                 <a className="dropdown-item" href="https://github.com/Titanium-Lung/archipelago-csh/issues">Report an issue</a>
                                 <a className="dropdown-item" href={`https://profiles.csh.rit.edu/user/${user?.username}`}>Profile</a>
+                                <a className="dropdown-item" href="/settings">Settings</a>
                                 <div className="dropdown-divider"></div>
                                 <a className="dropdown-item" href={`${import.meta.env.VITE_BACKEND_URL}/logout`}>Logout</a>
                             </div>

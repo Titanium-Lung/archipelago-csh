@@ -8,9 +8,22 @@ import Sphere from "./pages/Sphere"
 import Tracker from "./pages/Tracker"
 import Login from "./pages/Login"
 import PageNotFound from "./pages/PageNotFound"
+import Settings from "./pages/Settings"
 import { UserProvider } from "./UserContext"
 
 function App() {
+  // Set theme to light or dark 
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme") || "auto"
+    const html = document.documentElement
+    if (savedTheme === "auto") {
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches
+      html.setAttribute("data-bs-theme", prefersDark ? "dark" : "light")
+    } else {
+      html.setAttribute("data-bs-theme", savedTheme)
+    }
+  }, [])
+
   return (
     <UserProvider> {/* Fetches user data to provide to every other component */}
       <BrowserRouter>
@@ -22,6 +35,7 @@ function App() {
           <Route path="/spheres/:roomId" element={<Sphere />} />
           <Route path="/tracker/:roomId/:slot" element={<Tracker />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<PageNotFound />} />
         </Routes>
       </BrowserRouter>

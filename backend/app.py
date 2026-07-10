@@ -15,6 +15,7 @@ import shutil
 import json
 import pytz # type: ignore
 from datetime import datetime
+from babel.dates import format_datetime # type: ignore
 from flask_pyoidc.flask_pyoidc import OIDCAuthentication # type: ignore
 from flask_pyoidc.provider_configuration import ProviderConfiguration, ClientMetadata # type: ignore
 sys.path.insert(0, "Archipelago-0.6.7")
@@ -226,7 +227,7 @@ def upload_file():
     thread.start()
 
     state.admin = session.get('userinfo').get('uuid')
-    state.start = datetime.now(pytz.timezone('America/New_York'))
+    state.start = datetime.now()
 
     rooms[room_id] = state
 
@@ -244,15 +245,18 @@ def upload_file():
 """
 Get all the running rooms and relevant info
 """
-@api.route("/rooms")
+@api.route("/rooms", methods=["PUT"])
 def get_all_rooms():
     current_rooms = []
+
+    # user's timezone and locale data, as well as a couple of other things
+    data = request.get_json().get("data")
     
     for room_id in rooms:
         room_info = {}
         room_info['room_id'] = room_id
         room_info['port'] = rooms[room_id].port
-        room_info['start'] = rooms[room_id].start.strftime('%d/%m/%y %H:%M')
+        room_info['start'] = format_datetime(rooms[room_id].start.astimezone(pytz.timezone(data["timeZone"])), format='short', locale=data["locale"].replace('-', '_'))
         if rooms[room_id].running_process is None:
             room_info['running'] = False
         else:
@@ -548,7 +552,7 @@ def restart_all():
                         state.slotinfos = {int(k): v for k, v in data["slotinfos"].items()}
                         state.port = data["port"]
                         state.admin = data["admin"]
-                        state.start = datetime.fromtimestamp(data["start"], pytz.timezone('America/New_York'))
+                        state.start = datetime.fromtimestamp(data["start"])
                         state.released_games = data["released_games"]
 
                         # Attempt to connect to the same port. If unavailable, try new ones
