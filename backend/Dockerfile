@@ -16,4 +16,4 @@ RUN mkdir -p /app/Archipelago-0.6.7/data/lua
 
 EXPOSE 5001
 
-CMD ["gunicorn", "-w", "1", "-b", "0.0.0.0:5001", "app:app"]
+CMD ["gunicorn", "app:app"]

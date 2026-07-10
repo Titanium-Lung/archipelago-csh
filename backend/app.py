@@ -525,6 +525,7 @@ Starts up every archipelago server in the uploads folder
 """
 def restart_all():
     global rooms
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
     with os.scandir(UPLOAD_FOLDER) as uploads:
         for server in uploads:
@@ -650,13 +651,11 @@ def cleanup():
             state.running_process.terminate()
             state.running_process.wait()
 
-atexit.register(cleanup)
-
 app.register_blueprint(api, url_prefix='/api')
 
-# Note that this is not the best way to do setup like this, but I'm only using 1 worker thread with gunicorn
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-restart_all()
-
 if __name__ == "__main__":
+    with app.app_context():
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+        restart_all()
+        atexit.register(cleanup)
     app.run(debug=True, port=5001, use_reloader=False, host="0.0.0.0")
