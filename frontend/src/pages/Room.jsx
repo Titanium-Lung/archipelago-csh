@@ -8,6 +8,7 @@ function Room() {
 
     const navigate = useNavigate()
     const bottomRef = useRef(null)
+    const [initialFetch, setInitialFetch] = useState(true)
     const user = useUser()
 
     const [port, setPort] = useState("")
@@ -56,6 +57,9 @@ function Room() {
 
             if (response.ok) {
                 setLog(result.lines)
+                if (initialFetch) {
+                    setInitialFetch(false)
+                }
             }
         }
 
@@ -79,11 +83,25 @@ function Room() {
         fetchPlayers()
     }, [])
 
-    // Autoscroll the log when it's updated 
+    // Autoscroll log at the begining after fetching the log
     useEffect(() => {
-        if (bottomRef.current) {
+        if (!initialFetch && bottomRef.current) {
             bottomRef.current.scrollTop = bottomRef.current.scrollHeight
         }
+    }, [initialFetch])
+
+    // Autoscroll the log when it's updated 
+    useEffect(() => {
+        setTimeout(() => {
+            const logBox = bottomRef.current
+            if (!logBox) return
+
+            const isAtBottom = logBox.scrollHeight - logBox.scrollTop <= logBox.clientHeight + 60
+            
+            if (isAtBottom) {
+                logBox.scrollTop = logBox.scrollHeight
+            }
+        }, 0)
     }, [log])
 
     const handleKeyUp = async (event) => {
