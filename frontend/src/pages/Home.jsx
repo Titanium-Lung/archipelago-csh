@@ -238,33 +238,6 @@ function Home() {
                         <p>None</p>
                     )
                 }
-                <h2>Current Rooms DB</h2>
-                {
-                    roomsDB.length > 0 ? (
-                        <div className="d-flex justify-content-center mx-md-5">
-                            <table className="table table-bordered">
-                                <thead>
-                                    <tr className="table-primary">
-                                        <th>Port</th>
-                                        <th>Room ID</th>
-                                        <th>Admin</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {roomsDB.map((room, index) => (
-                                        <tr key={index}>
-                                            <td>{room.port}</td>
-                                            <td>{room.room_id}</td>
-                                            <td>{room.admin}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    ) : (
-                        <p>None</p>
-                    )
-                }
             </div>
         </div>
     )
