@@ -244,19 +244,43 @@ def upload_file():
         cur.execute("INSERT INTO rooms VALUES (%s, %s, %s, %s, %s, %s, %s)", 
                     (room_id, port, state.admin, extract_folder_path, state.arch_file_path, False, state.start))
 
+        locations = []
+
         for slot in state.location_info:
             for location_id in state.location_info[slot]:
                 sphere = state.location_info[slot][location_id]['sphere']
-                from_ = state.location_info[slot][location_id]['from']
+                from_name = state.location_info[slot][location_id]['from']
                 game = state.location_info[slot][location_id]['game']
-                to = state.location_info[slot][location_id]['to']
+                to_name = state.location_info[slot][location_id]['to']
                 location_name = state.location_info[slot][location_id]['location_name']
                 item_name = state.location_info[slot][location_id]['item_name']
 
-                cur.execute("INSERT INTO locations VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)", 
-                            (slot, location_id, sphere, from_, game, to, location_name, item_name, room_id))
+                locations.append((slot, location_id, sphere, from_name, game, to_name, location_name, item_name, room_id))
+        
+        with cur.copy("COPY locations (slot, location_id, sphere, from_name, game, to_name, location_name, item_name, room_id) FROM STDIN") as copy:
+            for location in locations:
+                copy.write_row(location)
+        
+        slots = []
+        for slot in state.slotinfos:
+            slots.append((slot, state.slotinfos[slot]['name'], state.slotinfos[slot]['game'], room_id))
+        
+        with cur.copy("COPY slots (id, name, game, room_id) FROM STDIN") as copy:
+            for slot in slots:
+                copy.write_row(slot)
+        
+        items = []
+        for game in state.ids:
+            for item_id in state.ids[game]['id_to_item_name']:
+                items.append((game, state.ids[game]['id_to_item_name'][item_id], item_id, room_id))
+        
+        with cur.copy("COPY items (game, name, id, room_id) FROM STDIN") as copy:
+            for item in items:
+                copy.write_row(item)
 
         conn.commit()
+    
+    print("This is me reaching the end of this")
 
     result = {
         "message": "Server started",
