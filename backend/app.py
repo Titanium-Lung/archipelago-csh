@@ -13,6 +13,7 @@ import uuid
 import random
 import shutil
 import json
+import psycopg # type: ignore
 import pytz # type: ignore
 from datetime import datetime
 from babel.dates import format_datetime # type: ignore
@@ -54,6 +55,12 @@ SERVER_PORT = app.config['SERVER_PORT']
 PORT_RANGE = app.config['PORT_RANGE']
 RETRY = app.config['RETRY']
 SHUTDOWN_TIME = 7200
+
+DB_HOST = "postgres.csh.rit.edu"
+DB_NAME = "archipelagodb"
+DB_USER = "archipelagodb"
+DB_PASS = app.config['DB_PASS']
+conn = None
 
 # Everything is stored in a dictionary, which breaks when multiple worker threads are used (but I just use 1)
 rooms = {}
@@ -233,6 +240,24 @@ def upload_file():
 
     save_state(room_id, state)
 
+    with conn.cursor() as cur:
+        cur.execute("INSERT INTO rooms VALUES (%s, %s, %s, %s, %s, %s, %s)", 
+                    (room_id, port, state.admin, extract_folder_path, state.arch_file_path, False, state.start))
+
+        for slot in state.location_info:
+            for location_id in state.location_info[slot]:
+                sphere = state.location_info[slot][location_id]['sphere']
+                from_ = state.location_info[slot][location_id]['from']
+                game = state.location_info[slot][location_id]['game']
+                to = state.location_info[slot][location_id]['to']
+                location_name = state.location_info[slot][location_id]['location_name']
+                item_name = state.location_info[slot][location_id]['item_name']
+
+                cur.execute("INSERT INTO locations VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)", 
+                            (slot, location_id, sphere, from_, game, to, location_name, item_name, room_id))
+
+        conn.commit()
+
     result = {
         "message": "Server started",
         "filename": file.filename,
@@ -267,6 +292,25 @@ def get_all_rooms():
         current_rooms.append(room_info)
     
     return jsonify({"rooms": sorted(current_rooms, key=lambda d: d['start_for_sorting'], reverse=True)})
+
+
+@api.route("/roomsdb")
+def get_rooms_db():
+    current_rooms = []
+
+    if conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM rooms")
+            for room in cur:
+                room_dict = {}
+                room_dict["room_id"] = room[0]
+                room_dict["port"] = room[1]
+                room_dict["admin"] = room[2]
+
+                current_rooms.append(room_dict)
+    
+    return jsonify({"rooms": current_rooms})
+
 
 """
 Stops specified room and deletes all files associated with it
@@ -650,6 +694,17 @@ def cleanup():
             print(f"Shutting down Archipelago Server with id {room_id}...")
             state.running_process.terminate()
             state.running_process.wait()
+    
+    if conn:
+        conn.close()
+
+"""
+Establishes the database connection
+"""
+def db_connection():
+    global conn
+
+    conn = psycopg.connect(dbname=DB_NAME, user=DB_USER, password=DB_PASS, host=DB_HOST)
 
 app.register_blueprint(api, url_prefix='/api')
 
@@ -658,4 +713,5 @@ if __name__ == "__main__":
         os.makedirs(UPLOAD_FOLDER, exist_ok=True)
         restart_all()
         atexit.register(cleanup)
+        conn = psycopg.connect(dbname=DB_NAME, user=DB_USER, password=DB_PASS, host=DB_HOST)
     app.run(debug=True, port=5001, use_reloader=False, host="0.0.0.0")

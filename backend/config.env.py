@@ -32,3 +32,6 @@ PORT_RANGE = int(os.environ.get('PORT_RANGE',
                             20))
 RETRY = int(os.environ.get('RETRY',
                        PORT_RANGE))
+
+DB_PASS = os.environ.get('DB_PASS',
+                         ' ')

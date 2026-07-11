@@ -15,6 +15,8 @@ function Home() {
     const [port, setPort] = useState("")
     const [roomId, setRoomId] = useState("")
 
+    const [roomsDB, setRoomsDB] = useState([])
+
     useEffect(() => {
         async function fetchRooms() {
             const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/rooms`, {
@@ -30,6 +32,21 @@ function Home() {
             } 
         }
         fetchRooms()
+    }, [])
+
+    useEffect(() => {
+        async function fetchRoomsDB() {
+            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/roomsdb`, {
+                method: "GET"
+            })
+
+            const result = await response.json()
+
+            if (response.ok) {
+                setRoomsDB(result.rooms)
+            }
+        }
+        fetchRoomsDB()
     }, [])
 
     // For file picker
@@ -218,6 +235,33 @@ function Home() {
                             </table>
                         </div>
                     ) : ( 
+                        <p>None</p>
+                    )
+                }
+                <h2>Current Rooms DB</h2>
+                {
+                    roomsDB.length > 0 ? (
+                        <div className="d-flex justify-content-center mx-md-5">
+                            <table className="table table-bordered">
+                                <thead>
+                                    <tr className="table-primary">
+                                        <th>Port</th>
+                                        <th>Room ID</th>
+                                        <th>Admin</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {roomsDB.map((room, index) => (
+                                        <tr key={index}>
+                                            <td>{room.port}</td>
+                                            <td>{room.room_id}</td>
+                                            <td>{room.admin}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : (
                         <p>None</p>
                     )
                 }
