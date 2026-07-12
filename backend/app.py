@@ -185,7 +185,9 @@ def upload_file():
             state.ids[game]['id_to_location_name'] = {v: k for k, v in subdict['location_name_to_id'].items()}
         
         # Build location_info dict which contains every location and all the info about it
+        # Also build a list of every location to be inserted into the database
         # Structure is: location_info = {slot#: {location_id: {name, sphere, from, game, to, location_name, item_name}}}
+        locations = []
         sphere_num = 1
         for sphere in decoded_arch["spheres"]:
             for slot in sphere:
@@ -205,6 +207,14 @@ def upload_file():
                     state.location_info[slot][location_id]["to"] = decoded_arch["slot_info"][location_tuple[1]].name
                     state.location_info[slot][location_id]["location_name"] = state.ids[slotinfo.game]['id_to_location_name'][location_id]
                     state.location_info[slot][location_id]["item_name"] = state.ids[decoded_arch["slot_info"][location_tuple[1]].game]['id_to_item_name'][location_tuple[0]]
+
+                    to_name = state.location_info[slot][location_id]['to']
+                    location_name = state.location_info[slot][location_id]['location_name']
+                    if len(location_name) > 255:
+                        location_name = location_name[:255]
+                    item_name = state.location_info[slot][location_id]['item_name']
+
+                    locations.append((slot, location_id, sphere_num, slotinfo.name, slotinfo.game, to_name, location_name, item_name, room_id))
             sphere_num+=1
 
         # Id to location name is not used anywhere else
@@ -219,19 +229,6 @@ def upload_file():
             cur.execute("INSERT INTO rooms VALUES (%s, %s, %s, %s, %s, %s, %s)", 
                         (room_id, port, state.admin, extract_folder_path, state.arch_file_path, False, state.start))
 
-            locations = []
-
-            for slot in state.location_info:
-                for location_id in state.location_info[slot]:
-                    sphere = state.location_info[slot][location_id]['sphere']
-                    from_name = state.location_info[slot][location_id]['from']
-                    game = state.location_info[slot][location_id]['game']
-                    to_name = state.location_info[slot][location_id]['to']
-                    location_name = state.location_info[slot][location_id]['location_name']
-                    item_name = state.location_info[slot][location_id]['item_name']
-
-                    locations.append((slot, location_id, sphere, from_name, game, to_name, location_name, item_name, room_id))
-            
             with cur.copy("COPY locations (slot, location_id, sphere, from_name, game, to_name, location_name, item_name, room_id) FROM STDIN") as copy:
                 for location in locations:
                     copy.write_row(location)
