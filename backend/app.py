@@ -456,14 +456,18 @@ Get the contents of the log file of the specified room
 def stream_log(room_id):
     if room_id not in rooms:
         return jsonify({"error": "No archipelago game with this id"}), 404
-
-    state: ServerState = rooms[room_id]
-
-    if state.arch_file_path is None: 
-        return jsonify({"error": "no archipelago game loaded"}), 404
-
-    f = open(f"{state.extract_folder_path}/server-log.txt", "r")
     
+    extract_folder_path = ""
+    if not conn:
+        state: ServerState = rooms[room_id]
+        extract_folder_path = state.extract_folder_path
+    else:
+        with conn.cursor() as cur:
+            cur.execute("SELECT extract_folder_path FROM rooms WHERE room_id = %s", (room_id,))
+            extract_folder_path = cur.fetchone()[0]
+
+    f = open(f"{extract_folder_path}/server-log.txt", "r")
+
     result = { 
         "lines": f.readlines()
     }
@@ -478,15 +482,22 @@ def room_info(room_id):
     if room_id not in rooms:
             return jsonify({"error": "No archipelago game with this id"}), 404
 
-    state: ServerState = rooms[room_id]
+    if not conn:
+        state: ServerState = rooms[room_id]
 
-    if state.arch_file_path is None:
-        return jsonify({"error": "no archipelago game uploaded"}), 404
-    
-    return jsonify({
-        "port": state.port,
-        "admin": state.admin
-    })
+        return jsonify({
+            "port": state.port,
+            "admin": state.admin
+        })
+    else:
+        with conn.cursor() as cur:
+            cur.execute("SELECT port, admin FROM rooms WHERE room_id = %s", (room_id,))
+            info = cur.fetchone()
+            
+            return jsonify({
+                "port": info[0],
+                "admin": info[1]
+            })
 
 """
 Write the given command to stdin of the process of the specified room
@@ -497,24 +508,46 @@ def server_command(room_id):
     if room_id not in rooms:
         return jsonify({"error": "No archipelago game with this id"}), 404
 
-    state: ServerState = rooms[room_id]
+    if not conn:
+        state: ServerState = rooms[room_id]
 
-    if state.running_process is None:
-        return jsonify({"error": "Archipelago server not running"}), 404
+        if state.running_process is None:
+            return jsonify({"error": "Archipelago server not running"}), 404
 
-    if session.get('userinfo').get('uuid') != state.admin:
-        return jsonify({"error": "user is not admin"}), 400
-    
-    data = request.get_json()
-    command: str = data.get('command')
-    state.running_process.stdin.write((command + '\n').encode())
-    state.running_process.stdin.flush()
+        if session.get('userinfo').get('uuid') != state.admin:
+            return jsonify({"error": "user is not admin"}), 403
+        
+        data = request.get_json()
+        command: str = data.get('command')
+        state.running_process.stdin.write((command + '\n').encode())
+        state.running_process.stdin.flush()
 
-    if command.startswith('/release') and len(command.split(' ')) == 2:
-        state.released_games[command.split(' ')[1].lower()] = ""
-        save_state(room_id, state)
+        if command.startswith('/release') and len(command.split(' ')) == 2:
+            state.released_games[command.split(' ')[1].lower()] = ""
+            save_state(room_id, state)
 
-    return jsonify({"message": "ok"})
+        return jsonify({"message": "ok"})
+    else:
+        if rooms[room_id] is None:
+            return jsonify({"error": "Archipelago server not running"}), 404
+        
+        with conn.cursor() as cur:
+            cur.execute("SELECT admin FROM rooms WHERE room_id = %s", (room_id,))
+            admin = cur.fetchone()[0]
+
+            if session.get('userinfo').get('uuid') != admin:
+                return jsonify({"error": "user is not admin"}), 403
+            
+            data = request.get_json()
+            command: str = data.get('command')
+            rooms[room_id].stdin.write((command + '\n').encode())
+            rooms[room_id].stdin.flush()
+
+            if command.startswith('/release') and len(command.split(' ')) == 2:
+                cur.execute("INSERT INTO released_games VALUES (%s, %s)", (command.split(' ')[1].lower(), room_id))
+                conn.commit()
+
+            return jsonify({"message": "ok"})
 
 """
 Gets all the players participating in the multiworld and relevant data
@@ -524,14 +557,25 @@ def get_players(room_id):
     if room_id not in rooms:
         return jsonify({"error": "No archipelago game with this id"}), 404
 
-    state: ServerState = rooms[room_id]
+    if not conn:
+        state: ServerState = rooms[room_id]
 
-    if state.arch_file_path is None:
-        return jsonify({"error": "No archipelago game uploaded"}), 404
+        players = multidata.get_players(state)
 
-    players = multidata.get_players(state)
+        return jsonify({"players": players})
+    else:
+        with conn.cursor() as cur:
+            cur.execute("SELECT arch_file_path, extract_folder_path FROM rooms WHERE room_id = %s", (room_id,))
+            info = cur.fetchone()
+            
+            state = ServerState()
+            state.arch_file_path = info[0]
+            state.extract_folder_path= info[1]
 
-    return jsonify({"players": players})
+            players = multidata.get_players(state)
+
+            return jsonify({"players": players})
+
 
 """
 Sends the requested file 
