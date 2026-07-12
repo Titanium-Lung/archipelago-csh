@@ -210,7 +210,7 @@ function Tracker() {
             <div className="mx-md-5">
                 <button className="btn btn-primary" onClick={sendToMultiTracker}>Back to Multiworld Tracker</button>
             </div>
-            <h1 style={{textAlign: 'center'}}>Individual Tracker</h1>
+            <h1 className="text-center">Individual Tracker</h1>
             <div className="mx-md-5 m-3">
                 <input type="text" id="input" name="search" placeholder="Search" value={itemFilter} onChange={e => setItemFilter(e.target.value)} />
                 <button className="btn btn-primary" onClick={() => collapseItems ? setCollapseItems(false) : setCollapseItems(true)} style={{ marginLeft: '10px' }}>Collapse</button>
@@ -235,7 +235,7 @@ function Tracker() {
                     </tbody>
                 </table>
             </div>
-            <h2 style={{textAlign: 'center'}}>Location Checks</h2>
+            <h2 className="text-center">Location Checks</h2>
             <div className="mx-md-5 m-3">
                 <input type="text" id="input" name="search" placeholder="Search" value={locationFilter} onChange={e => setLocationFilter(e.target.value)} />
                 <button className="btn btn-primary" onClick={() => collapseLocations ? setCollapseLocations(false) : setCollapseLocations(true)} style={{ marginLeft: '10px' }}>Collapse</button>
@@ -273,7 +273,7 @@ function Tracker() {
                     </div>
                 )
             }
-            <h2 style={{textAlign: 'center'}}>Hints</h2>
+            <h2 className="text-center">Hints</h2>
             <div className="mx-md-5 m-3">
                 <input type="text" id="input" name="search" placeholder="Search" value={filterHints} onChange={e => setFilterHints(e.target.value)} />
                 <button className="btn btn-primary" onClick={() => collapseHints ? setCollapseHints(false) : setCollapseHints(true)} style={{ marginLeft: '10px' }}>Collapse</button>

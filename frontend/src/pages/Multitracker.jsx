@@ -147,8 +147,8 @@ function Multitracker() {
         <div>
             <title>{`Multitracker ${port}`}</title>
             <Navbar user={user}></Navbar>
-            <h1 style={{textAlign: 'center'}}>Multiworld Tracker</h1>
-            <p style={{textAlign: 'center'}}>Port: {port}</p>
+            <h1 className="text-center">Multiworld Tracker</h1>
+            <p className="text-center">Port: {port}</p>
             <div className="mx-md-5 m-3">
                 <input type="text" id="input" name="search" placeholder="Search" value={filterGames} onChange={e => setFilterGames(e.target.value)} />
             </div>
@@ -208,7 +208,7 @@ function Multitracker() {
                     </div>
                 )
             }
-            <h2 style={{textAlign: 'center'}}>Hints</h2>
+            <h2 className="text-center">Hints</h2>
             <div className="mx-md-5 m-3">
                 <input type="text" id="input" name="search" placeholder="Search" value={filterHints} onChange={e => setFilterHints(e.target.value)} />
             </div>

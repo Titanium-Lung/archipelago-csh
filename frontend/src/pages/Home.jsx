@@ -92,7 +92,7 @@ function Home() {
     return (
         <div>
             <Navbar user={user}></Navbar>
-            <div style={{textAlign: 'center'}}>
+            <div className="text-center">
                 <h1>Archipelago Host</h1>
                 {
                     // Only CSH accounts can upload files 
