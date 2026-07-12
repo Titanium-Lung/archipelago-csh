@@ -326,7 +326,7 @@ def get_all_rooms():
                 room_info = {}
                 room_info['room_id'] = room[0]
                 room_info['port'] = room[1]
-                room_info['start'] = room[2]
+                room_info['start'] = format_datetime(room[2].astimezone(pytz.timezone(data["timeZone"])), format='short', locale=data["locale"].replace('-', '_'))
                 room_info['start_for_sorting'] = room[2]
                 room_info['admin_uuid'] = room[3]
                 if rooms[room[0]] is None:
@@ -337,25 +337,6 @@ def get_all_rooms():
                 current_rooms.append(room_info)
     
     return jsonify({"rooms": sorted(current_rooms, key=lambda d: d['start_for_sorting'], reverse=True)})
-
-
-@api.route("/roomsdb")
-def get_rooms_db():
-    current_rooms = []
-
-    if conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT * FROM rooms")
-            for room in cur:
-                room_dict = {}
-                room_dict["room_id"] = room[0]
-                room_dict["port"] = room[1]
-                room_dict["admin"] = room[2]
-
-                current_rooms.append(room_dict)
-    
-    return jsonify({"rooms": current_rooms})
-
 
 """
 Stops specified room and deletes all files associated with it
