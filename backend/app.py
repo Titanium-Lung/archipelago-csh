@@ -387,63 +387,102 @@ def restart_server(room_id):
     if room_id not in rooms:
         return jsonify({"error": "No archipelago game with this id"}), 404
 
-    state: ServerState = rooms[room_id]
+    state: ServerState = None
+    arch_file_path = None
+    extract_folder_path = None
+    running_process = None
+    restarting = None
+    port = None
 
-    if state.arch_file_path is None:
+    if not conn:
+        state = rooms[room_id]
+        arch_file_path = state.arch_file_path
+        extract_folder_path = state.extract_folder_path
+        running_process = state.running_process
+        restarting = state.restarting
+        port = state.port
+    else:
+        with conn.cursor() as cur:
+            cur.execute("SELECT arch_file_path, extract_folder_path, restarting, port FROM rooms WHERE room_id = %s", (room_id,))
+            info = cur.fetchone()
+            arch_file_path = info[0]
+            extract_folder_path = info[1]
+            restarting = info[2]
+            port = info[3]
+            running_process = rooms[room_id]
+
+    if arch_file_path is None:
         return jsonify({"error": "no server to restart"}), 404
     
-    if state.running_process is None:
-        if state.restarting: # to handle multiple clients trying to restart at the same time
+    if running_process is None:
+        if restarting: # to handle multiple clients trying to restart at the same time
             return jsonify({"error": "Server is already restarting"}), 400
         
-        state.restarting = True
+        if not conn:
+            state.restarting = True
+        else:
+            with conn.cursor() as cur:
+                cur.execute("UPDATE rooms SET restarting = %s WHERE room_id = %s", (True, room_id))
+                conn.commit()
         
         # Ensure the port isn't taken by itself (perhaps unnecessary)
-        if not wait_for_free_port(state.port):
+        if not wait_for_free_port(port):
             print("Timed out while waiting for port")
-            state.restarting = False
+            if not conn:
+                state.restarting = False
+            else:
+                with conn.cursor() as cur:
+                    cur.execute("UPDATE rooms SET restarting = %s WHERE room_id = %s", (False, room_id))
+                    conn.commit()
+
             return jsonify({"error": "Timed out while waiting for port"}), 500
         
         # Attempt to connect to the same port. If unavailable, try new ones
-        ports = [state.port]
+        ports = [port]
         first = True
-        for port in ports:
+        for try_port in ports:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                 try:
-                    s.bind(("localhost", port))
-                    state.port = port
+                    s.bind(("localhost", try_port))
+                    port = try_port
                 except OSError:
-                    state.port = None
+                    port = None
                     if first:
                         ports = ports + random.sample(range(SERVER_PORT, SERVER_PORT+PORT_RANGE), RETRY)
                         first = False
         
-        if state.port is None:
+        if port is None:
             return jsonify({"error": "could not find a port to restart the server on"}), 500
         
-        state.running_process = subprocess.Popen(
-            ["python3", ARCHIPELAGO_SERVER, state.arch_file_path, f"--port={state.port}", f"--auto_shutdown={SHUTDOWN_TIME}"],
+        running_process = subprocess.Popen(
+            ["python3", ARCHIPELAGO_SERVER, arch_file_path, f"--port={port}", f"--auto_shutdown={SHUTDOWN_TIME}"],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             stdin=subprocess.PIPE,
             env={**os.environ, "HOME": UPLOAD_FOLDER}
         )
 
-        logpath = f"{state.extract_folder_path}/server-log.txt"
+        logpath = f"{extract_folder_path}/server-log.txt"
 
-        thread = threading.Thread(target=write_log, args=(state.running_process, logpath, room_id))
+        thread = threading.Thread(target=write_log, args=(running_process, logpath, room_id))
         thread.daemon = True
         thread.start()
 
-        save_state(room_id, state)
+        if not conn:
+            save_state(room_id, state)
 
         result = {
             "message": "Server started",
-            "port": state.port
+            "port": port
         }
 
-        state.restarting = False
+        if not conn:
+            state.restarting = False
+        else:
+            with conn.cursor() as cur:
+                cur.execute("UPDATE rooms SET restarting = %s WHERE room_id = %s", (False, room_id))
+                conn.commit()
 
         return jsonify(result)
     else:
@@ -557,12 +596,9 @@ def get_players(room_id):
     if room_id not in rooms:
         return jsonify({"error": "No archipelago game with this id"}), 404
 
+    state: ServerState = None
     if not conn:
-        state: ServerState = rooms[room_id]
-
-        players = multidata.get_players(state)
-
-        return jsonify({"players": players})
+        state = rooms[room_id]
     else:
         with conn.cursor() as cur:
             cur.execute("SELECT arch_file_path, extract_folder_path FROM rooms WHERE room_id = %s", (room_id,))
@@ -571,10 +607,10 @@ def get_players(room_id):
             state = ServerState()
             state.arch_file_path = info[0]
             state.extract_folder_path= info[1]
+    
+    players = multidata.get_players(state)
 
-            players = multidata.get_players(state)
-
-            return jsonify({"players": players})
+    return jsonify({"players": players})
 
 
 """
@@ -761,7 +797,7 @@ def restart_all():
                     env={**os.environ, "HOME": UPLOAD_FOLDER}
                 )
 
-                cur.execute("UPDATE rooms SET port = %s WHERE room_id = %s", (real_port, room_id))
+                cur.execute("UPDATE rooms SET port = %s, restarting = %s WHERE room_id = %s", (real_port, False, room_id))
 
                 logpath = f"{extract_folder_path}/server-log.txt"
 
@@ -803,7 +839,10 @@ def write_log(process, filepath, room_id):
             f.flush()
 
         if room_id in rooms:
-            rooms[room_id].running_process = None
+            if not conn:
+                rooms[room_id].running_process = None
+            else:
+                rooms[room_id] = None
 
 """
 Check if certain port is free for 10 seconds
