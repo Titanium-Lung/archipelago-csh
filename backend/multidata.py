@@ -48,8 +48,8 @@ Gets the data for each player in the multiworld
 Data includes slot id, name, game, checks gotten, total checks, and last activity (most recent check)
 Also gets all hints
 """
-def multitracker_data(state: ServerState):
-    with open(state.arch_file_path, "rb") as f:
+def multitracker_data(arch_file_path, extract_folder_path, released_games, conn, room_id):
+    with open(arch_file_path, "rb") as f:
         data = f.read()
     
     decoded_arch = restricted_loads(zlib.decompress(data[1:]))
@@ -68,7 +68,7 @@ def multitracker_data(state: ServerState):
     recent_activity = "None"
     recent_activity_dt = (datetime.now() - datetime.fromtimestamp(0)) # timedelta object
 
-    with os.scandir(state.extract_folder_path) as folder:
+    with os.scandir(extract_folder_path) as folder:
         apsave = False
         # Scans uploaded folder for apsave
         for file in folder:
@@ -119,24 +119,33 @@ def multitracker_data(state: ServerState):
                                 player["status"] = decoded_apsave["client_game_state"][player_tuple]
                                 if player["status"] == 30: # 30 means completed
                                     games_complete += 1
-                                elif player["name"].lower() in state.released_games: 
+                                elif player["name"].lower() in released_games: 
                                     player["status"] = 25 # I made this up; it's for released games
                             else:
-                                if player["name"].lower() in state.released_games:
+                                if player["name"].lower() in released_games:
                                     player["status"] = 25
                                 else:
                                     player["status"] = 0
                         
                         for player in decoded_apsave["hints"]: # player is (team#, slot#)
+                            slot = player[1]
+                            slot_hints = []
                             for hint_info in decoded_apsave["hints"][player]:
-                                slot = player[1]
                                 if hint_info.finding_player == slot: # no double ups. Must be finding player because location_info is keyed by location
+                                    slot_hints.append((room_id, int(slot), str(hint_info.location)))
+                                    
+                            with conn.cursor() as cur:
+                                cur.executemany("""SELECT location_name, to_name, from_name, item_name, game FROM locations 
+                                            WHERE room_id = %s AND slot = %s AND location_id = %s""", slot_hints, returning=True)
+                                loc_infos = [cur.fetchone() for _ in cur.results()]
+
+                                for loc_info in loc_infos:
                                     hint = {}
-                                    hint["location"] = state.location_info[slot][hint_info.location]["location_name"]
-                                    hint["receiving_player"] = state.location_info[slot][hint_info.location]["to"]
-                                    hint["finding_player"] = state.location_info[slot][hint_info.location]["from"]
-                                    hint["item"] = state.location_info[slot][hint_info.location]["item_name"]
-                                    hint["game"] = state.location_info[slot][hint_info.location]["game"]
+                                    hint["location"] = loc_info[0]
+                                    hint["receiving_player"] = loc_info[1]
+                                    hint["finding_player"] = loc_info[2]
+                                    hint["item"] = loc_info[3]
+                                    hint["game"] = loc_info[4]
                                     if hint_info.entrance.strip():
                                         hint["entrance"] = hint_info.entrance
                                     else:
@@ -156,11 +165,16 @@ def multitracker_data(state: ServerState):
 
                 player["checks_found"] = 0
                 player["last_activity"] = "None"
-                player["last_activity_num"] = 2147483647
+                player["last_activity_num"] = 2147483647 # Arbitrarily large number
                 player["status"] = 0
                 player["percent_checked"] = 0
     
-    totals: dict = {"total_checks": total_checks, "total_checked": total_checked, "games_complete": games_complete, "num_players": len(players), "num_players_not_released": len(players)-len(state.released_games), "recent_activity": recent_activity}
+    totals: dict = {"total_checks": total_checks, 
+                    "total_checked": total_checked, 
+                    "games_complete": games_complete, 
+                    "num_players": len(players), 
+                    "num_players_not_released": len(players)-len(released_games), 
+                    "recent_activity": recent_activity}
 
     return players, totals, hints
 

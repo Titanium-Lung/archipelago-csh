@@ -12,7 +12,6 @@ import time
 import uuid
 import random
 import shutil
-import json
 import psycopg # type: ignore
 import pytz # type: ignore
 from datetime import datetime
@@ -499,17 +498,16 @@ def send_patch_file(room_id, filename):
     if room_id not in rooms:
         return jsonify({"error": "No archipelago game with this id"}), 404
 
-    state: ServerState = rooms[room_id]
+    with conn.cursor() as cur:
+        cur.execute("SELECT extract_folder_path FROM rooms WHERE room_id = %s", (room_id,))
+        extract_folder_path = cur.fetchone()[0]
 
-    if state.arch_file_path is None: 
-        return jsonify({"error": "no archipelago game loaded"}), 404
-    
-    filepath = os.path.join(state.extract_folder_path, filename)
+        filepath = os.path.join(extract_folder_path, filename)
 
-    if not os.path.exists(filepath):
-        return jsonify({"error":"requested file does not exist"})
+        if not os.path.exists(filepath):
+            return jsonify({"error":"requested file does not exist"})
 
-    return send_file(filepath)
+        return send_file(filepath)
 
 """
 Gets the data for each player in the multiworld 
@@ -521,14 +519,19 @@ def multiworld_data(room_id):
     if room_id not in rooms:
         return jsonify({"error": "No archipelago game with this id"}), 404
 
-    state: ServerState = rooms[room_id]
+    with conn.cursor() as cur:
+        cur.execute("SELECT arch_file_path, extract_folder_path, port FROM rooms WHERE room_id = %s", (room_id,))
+        info = cur.fetchone()
 
-    if state.arch_file_path is None: 
-        return jsonify({"error": "no archipelago game loaded"}), 404
+        cur.execute("SELECT name FROM released_games WHERE room_id = %s", (room_id,))
+        released_games = cur.fetchall()
+        released_games_set = set()
+        for game in released_games:
+            released_games_set.add(game[0])
 
-    players, totals, hints = multidata.multitracker_data(state)
+        players, totals, hints = multidata.multitracker_data(info[0], info[1], released_games_set, conn, room_id)
 
-    return jsonify({"players": players, "totals": totals, "hints": hints, "port": state.port})
+        return jsonify({"players": players, "totals": totals, "hints": hints, "port": info[2]})
 
 """
 Gets received items, locations, and hints for given slot
