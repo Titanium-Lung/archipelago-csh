@@ -121,24 +121,23 @@ def upload_file():
     if not file.filename.endswith(".zip"):
         return jsonify({"error": "File must be a .zip file"}), 400
     
-    room_port = None
+    port = None
     
     # Generate random ports and find one that is available 
     ports = random.sample(range(SERVER_PORT, SERVER_PORT+PORT_RANGE), RETRY)
-    for port in ports:
+    for try_port in ports:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             try:
-                s.bind(("localhost", port))
-                room_port = port
+                s.bind(("localhost", try_port))
+                port = try_port
                 break
             except OSError:
                 continue
     
-    if room_port is None:
+    if port is None:
         return jsonify({"error": "Could not find an available port in range, try again later"}), 500
     
-    # Check if folders exist for testing
     if not os.path.isdir(UPLOAD_FOLDER):
         return jsonify({"error": "uploads folder does not exist"}), 500
 
@@ -153,7 +152,7 @@ def upload_file():
     room_id = str(uuid.uuid4())
     state: ServerState = ServerState()
 
-    state.port = room_port
+    state.port = port
     state.extract_folder_path = extract_folder_path
 
     filename = None
@@ -224,33 +223,32 @@ def upload_file():
     state.admin = session.get('userinfo').get('uuid')
     state.start = datetime.now()
     
-    if conn:
-        with conn.cursor() as cur:
-            cur.execute("INSERT INTO rooms VALUES (%s, %s, %s, %s, %s, %s, %s)", 
-                        (room_id, port, state.admin, extract_folder_path, state.arch_file_path, False, state.start))
+    with conn.cursor() as cur:
+        cur.execute("INSERT INTO rooms VALUES (%s, %s, %s, %s, %s, %s, %s)", 
+                    (room_id, try_port, state.admin, extract_folder_path, state.arch_file_path, False, state.start))
 
-            with cur.copy("COPY locations (slot, location_id, sphere, from_name, game, to_name, location_name, item_name, room_id) FROM STDIN") as copy:
-                for location in locations:
-                    copy.write_row(location)
-            
-            slots = []
-            for slot in state.slotinfos:
-                slots.append((slot, state.slotinfos[slot]['name'], state.slotinfos[slot]['game'], room_id))
-            
-            with cur.copy("COPY slots (id, name, game, room_id) FROM STDIN") as copy:
-                for slot in slots:
-                    copy.write_row(slot)
-            
-            items = []
-            for game in state.ids:
-                for item_id in state.ids[game]['id_to_item_name']:
-                    items.append((game, state.ids[game]['id_to_item_name'][item_id], item_id, room_id))
-            
-            with cur.copy("COPY items (game, name, id, room_id) FROM STDIN") as copy:
-                for item in items:
-                    copy.write_row(item)
+        with cur.copy("COPY locations (slot, location_id, sphere, from_name, game, to_name, location_name, item_name, room_id) FROM STDIN") as copy:
+            for location in locations:
+                copy.write_row(location)
+        
+        slots = []
+        for slot in state.slotinfos:
+            slots.append((slot, state.slotinfos[slot]['name'], state.slotinfos[slot]['game'], room_id))
+        
+        with cur.copy("COPY slots (id, name, game, room_id) FROM STDIN") as copy:
+            for slot in slots:
+                copy.write_row(slot)
+        
+        items = []
+        for game in state.ids:
+            for item_id in state.ids[game]['id_to_item_name']:
+                items.append((game, state.ids[game]['id_to_item_name'][item_id], item_id, room_id))
+        
+        with cur.copy("COPY items (game, name, id, room_id) FROM STDIN") as copy:
+            for item in items:
+                copy.write_row(item)
 
-            conn.commit()
+        conn.commit()
 
     if state.running_process is not None:
         state.running_process.terminate()
@@ -263,8 +261,6 @@ def upload_file():
         env={**os.environ, "HOME": UPLOAD_FOLDER}
     )
 
-    state.running_process = running_process
-
     logpath = f"{state.extract_folder_path}/server-log.txt"
 
     # Make the log file exist (don't know if I need to do this)
@@ -276,12 +272,7 @@ def upload_file():
     thread.daemon = True
     thread.start()
 
-    if conn:
-        rooms[room_id] = running_process
-    else:
-        rooms[room_id] = state
-
-        save_state(room_id, state)
+    rooms[room_id] = running_process
 
     result = {
         "message": "Server started",
@@ -300,38 +291,23 @@ def get_all_rooms():
 
     # user's timezone and locale data, as well as a couple of other things
     data = request.get_json().get("data")
-    
-    if not conn:
-        for room_id in rooms:
+
+    with conn.cursor() as cur:
+        cur.execute("SELECT room_id, port, start, admin FROM rooms")
+        db_rooms = cur.fetchall()
+        for room in db_rooms:
             room_info = {}
-            room_info['room_id'] = room_id
-            room_info['port'] = rooms[room_id].port
-            room_info['start'] = format_datetime(rooms[room_id].start.astimezone(pytz.timezone(data["timeZone"])), format='short', locale=data["locale"].replace('-', '_'))
-            room_info['start_for_sorting'] = rooms[room_id].start
-            if rooms[room_id].running_process is None:
+            room_info['room_id'] = room[0]
+            room_info['port'] = room[1]
+            room_info['start'] = format_datetime(room[2].astimezone(pytz.timezone(data["timeZone"])), format='short', locale=data["locale"].replace('-', '_'))
+            room_info['start_for_sorting'] = room[2]
+            room_info['admin_uuid'] = room[3]
+            if rooms[room[0]] is None:
                 room_info['running'] = False
             else:
                 room_info['running'] = True
-
-            room_info['admin_uuid'] = rooms[room_id].admin
+            
             current_rooms.append(room_info)
-    else:
-        with conn.cursor() as cur:
-            cur.execute("SELECT room_id, port, start, admin FROM rooms")
-            db_rooms = cur.fetchall()
-            for room in db_rooms:
-                room_info = {}
-                room_info['room_id'] = room[0]
-                room_info['port'] = room[1]
-                room_info['start'] = format_datetime(room[2].astimezone(pytz.timezone(data["timeZone"])), format='short', locale=data["locale"].replace('-', '_'))
-                room_info['start_for_sorting'] = room[2]
-                room_info['admin_uuid'] = room[3]
-                if rooms[room[0]] is None:
-                    room_info['running'] = False
-                else:
-                    room_info['running'] = True
-                
-                current_rooms.append(room_info)
     
     return jsonify({"rooms": sorted(current_rooms, key=lambda d: d['start_for_sorting'], reverse=True)})
 
@@ -344,38 +320,26 @@ def delete_room(room_id):
     if room_id not in rooms:
         return jsonify({"error": "No archipelago game with this id"}), 404
 
-    if not conn and rooms.get(room_id, None):
-        state: ServerState = rooms[room_id]
+    with conn.cursor() as cur:
+        cur.execute("SELECT admin, extract_folder_path FROM rooms WHERE room_id = %s", (room_id,))
+        info = cur.fetchone()
+        admin = info[0]
+        extract_folder_path = info[1]
 
-        if session.get('userinfo').get('uuid') != state.admin:
+        if session.get('userinfo').get('uuid') != admin:
             return jsonify({"error": "you are not the admin of this server"}), 403
         
-        if state.running_process is not None:
-            state.running_process.terminate()
-            state.running_process.wait()
+        if rooms[room_id] is not None:
+            rooms[room_id].terminate()
+            rooms[room_id].wait()
         
-        shutil.rmtree(state.extract_folder_path)
+        shutil.rmtree(extract_folder_path)
 
-        rooms.pop(room_id)
-    else:
-        with conn.cursor() as cur:
-            cur.execute("SELECT admin, extract_folder_path FROM rooms WHERE room_id = %s", (room_id,))
-            info = cur.fetchone()
-            admin = info[0]
-            extract_folder_path = info[1]
+        cur.execute("DELETE FROM rooms WHERE room_id = %s", (room_id,))
 
-            if session.get('userinfo').get('uuid') != admin:
-                return jsonify({"error": "you are not the admin of this server"}), 403
-            
-            if rooms[room_id] is not None:
-                rooms[room_id].terminate()
-                rooms[room_id].wait()
-            
-            shutil.rmtree(extract_folder_path)
+        conn.commit()
 
-            cur.execute("DELETE FROM rooms WHERE room_id = %s", (room_id,))
-
-            conn.commit()
+        rooms.pop(room_id, None)
 
     return jsonify({"message": "successfully deleted"})
 
@@ -387,122 +351,85 @@ def restart_server(room_id):
     if room_id not in rooms:
         return jsonify({"error": "No archipelago game with this id"}), 404
 
-    state: ServerState = None
-    arch_file_path = None
-    extract_folder_path = None
-    running_process = None
-    restarting = None
-    port = None
+    with conn.cursor() as cur:
+        cur.execute("SELECT arch_file_path, extract_folder_path, restarting, port FROM rooms WHERE room_id = %s", (room_id,))
+        info = cur.fetchone()
+        arch_file_path = info[0]
+        extract_folder_path = info[1]
+        restarting = info[2]
+        port = info[3]
+        running_process = rooms[room_id]
 
-    if not conn:
-        state = rooms[room_id]
-        arch_file_path = state.arch_file_path
-        extract_folder_path = state.extract_folder_path
-        running_process = state.running_process
-        restarting = state.restarting
-        port = state.port
-    else:
-        with conn.cursor() as cur:
-            cur.execute("SELECT arch_file_path, extract_folder_path, restarting, port FROM rooms WHERE room_id = %s", (room_id,))
-            info = cur.fetchone()
-            arch_file_path = info[0]
-            extract_folder_path = info[1]
-            restarting = info[2]
-            port = info[3]
-            running_process = rooms[room_id]
-
-    if arch_file_path is None:
-        return jsonify({"error": "no server to restart"}), 404
-    
-    if running_process is None:
-        if restarting: # to handle multiple clients trying to restart at the same time
-            return jsonify({"error": "Server is already restarting"}), 400
+        if arch_file_path is None:
+            return jsonify({"error": "no server to restart"}), 404
         
-        if not conn:
-            state.restarting = True
-        else:
-            with conn.cursor() as cur:
-                cur.execute("UPDATE rooms SET restarting = %s WHERE room_id = %s", (True, room_id))
-                conn.commit()
-        
-        # Ensure the port isn't taken by itself (perhaps unnecessary)
-        if not wait_for_free_port(port):
-            print("Timed out while waiting for port")
-            if not conn:
-                state.restarting = False
-            else:
-                with conn.cursor() as cur:
-                    cur.execute("UPDATE rooms SET restarting = %s WHERE room_id = %s", (False, room_id))
-                    conn.commit()
-
-            return jsonify({"error": "Timed out while waiting for port"}), 500
-        
-        # Attempt to connect to the same port. If unavailable, try new ones
-        ports = [port]
-        first = True
-        for try_port in ports:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                try:
-                    s.bind(("localhost", try_port))
-                    port = try_port
-                except OSError:
-                    port = None
-                    if first:
-                        ports = ports + random.sample(range(SERVER_PORT, SERVER_PORT+PORT_RANGE), RETRY)
-                        first = False
-        
-        if port is None:
-            return jsonify({"error": "could not find a port to restart the server on"}), 500
-        
-        new_running_process = subprocess.Popen(
-            ["python3", ARCHIPELAGO_SERVER, arch_file_path, f"--port={port}", f"--auto_shutdown={SHUTDOWN_TIME}"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            stdin=subprocess.PIPE,
-            env={**os.environ, "HOME": UPLOAD_FOLDER}
-        )
-
-        # If the subprocess failed to start, error
-        time.sleep(1)
-        if new_running_process.poll() is not None:
-            if not conn:
-                state.restarting = False
-                state.running_process = None
-            else:
-                with conn.cursor() as cur:
-                    cur.execute("UPDATE rooms SET restarting = %s WHERE room_id = %s", (False, room_id))
-                    cur.commit()
-                rooms[room_id] = None
+        if running_process is None:
+            if restarting: # to handle multiple clients trying to restart at the same time
+                return jsonify({"error": "Server is already restarting"}), 400
             
-            return jsonify({"error": "the subprocess failed to start"}), 500
-
-        logpath = f"{extract_folder_path}/server-log.txt"
-
-        thread = threading.Thread(target=write_log, args=(new_running_process, logpath, room_id))
-        thread.daemon = True
-        thread.start()
-
-        if not conn:
-            save_state(room_id, state)
-
-        result = {
-            "message": "Server started",
-            "port": port
-        }
-
-        if not conn:
-            state.restarting = False
-            state.running_process = new_running_process
-        else:
-            with conn.cursor() as cur:
-                cur.execute("UPDATE rooms SET restarting = %s, port = %s WHERE room_id = %s", (False, port, room_id))
+            cur.execute("UPDATE rooms SET restarting = %s WHERE room_id = %s", (True, room_id))
+            conn.commit()
+            
+            # Ensure the port isn't taken by itself (perhaps unnecessary)
+            if not wait_for_free_port(port):
+                print("Timed out while waiting for port")
+                cur.execute("UPDATE rooms SET restarting = %s WHERE room_id = %s", (False, room_id))
                 conn.commit()
+
+                return jsonify({"error": "Timed out while waiting for port"}), 500
+            
+            # Attempt to connect to the same port. If unavailable, try new ones
+            ports = [port]
+            first = True
+            for try_port in ports:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                    try:
+                        s.bind(("localhost", try_port))
+                        port = try_port
+                    except OSError:
+                        port = None
+                        if first:
+                            ports = ports + random.sample(range(SERVER_PORT, SERVER_PORT+PORT_RANGE), RETRY)
+                            first = False
+            
+            if port is None:
+                return jsonify({"error": "could not find a port to restart the server on"}), 500
+            
+            new_running_process = subprocess.Popen(
+                ["python3", ARCHIPELAGO_SERVER, arch_file_path, f"--port={port}", f"--auto_shutdown={SHUTDOWN_TIME}"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                stdin=subprocess.PIPE,
+                env={**os.environ, "HOME": UPLOAD_FOLDER}
+            )
+
+            # If the subprocess failed to start, error
+            time.sleep(1)
+            if new_running_process.poll() is not None:
+                cur.execute("UPDATE rooms SET restarting = %s WHERE room_id = %s", (False, room_id))
+                conn.commit()
+                
+                return jsonify({"error": "the subprocess failed to start"}), 500
+
+            logpath = f"{extract_folder_path}/server-log.txt"
+
+            thread = threading.Thread(target=write_log, args=(new_running_process, logpath, room_id))
+            thread.daemon = True
+            thread.start()
+
+            result = {
+                "message": "Server started",
+                "port": port
+            }
+
+            cur.execute("UPDATE rooms SET restarting = %s, port = %s WHERE room_id = %s", (False, port, room_id))
+            conn.commit()
             rooms[room_id] = new_running_process
 
-        return jsonify(result)
-    else:
-        return jsonify({"error": "server already running"}), 400
+            return jsonify(result)
+        else:
+            return jsonify({"error": "server already running"}), 400
 
 """
 Get the contents of the log file of the specified room
@@ -512,22 +439,17 @@ def stream_log(room_id):
     if room_id not in rooms:
         return jsonify({"error": "No archipelago game with this id"}), 404
     
-    extract_folder_path = ""
-    if not conn:
-        state: ServerState = rooms[room_id]
-        extract_folder_path = state.extract_folder_path
-    else:
-        with conn.cursor() as cur:
-            cur.execute("SELECT extract_folder_path FROM rooms WHERE room_id = %s", (room_id,))
-            extract_folder_path = cur.fetchone()[0]
+    with conn.cursor() as cur:
+        cur.execute("SELECT extract_folder_path FROM rooms WHERE room_id = %s", (room_id,))
+        extract_folder_path = cur.fetchone()[0]
 
-    f = open(f"{extract_folder_path}/server-log.txt", "r")
+        f = open(f"{extract_folder_path}/server-log.txt", "r")
 
-    result = { 
-        "lines": f.readlines()
-    }
+        result = { 
+            "lines": f.readlines()
+        }
 
-    return jsonify(result)
+        return jsonify(result)
 
 """
 Get the port and admin of the specified room
@@ -535,24 +457,16 @@ Get the port and admin of the specified room
 @api.route("/room/<room_id>")
 def room_info(room_id):
     if room_id not in rooms:
-            return jsonify({"error": "No archipelago game with this id"}), 404
+        return jsonify({"error": "No archipelago game with this id"}), 404
 
-    if not conn:
-        state: ServerState = rooms[room_id]
-
+    with conn.cursor() as cur:
+        cur.execute("SELECT port, admin FROM rooms WHERE room_id = %s", (room_id,))
+        info = cur.fetchone()
+        
         return jsonify({
-            "port": state.port,
-            "admin": state.admin
+            "port": info[0],
+            "admin": info[1]
         })
-    else:
-        with conn.cursor() as cur:
-            cur.execute("SELECT port, admin FROM rooms WHERE room_id = %s", (room_id,))
-            info = cur.fetchone()
-            
-            return jsonify({
-                "port": info[0],
-                "admin": info[1]
-            })
 
 """
 Write the given command to stdin of the process of the specified room
@@ -563,46 +477,26 @@ def server_command(room_id):
     if room_id not in rooms:
         return jsonify({"error": "No archipelago game with this id"}), 404
 
-    if not conn:
-        state: ServerState = rooms[room_id]
+    if rooms[room_id] is None:
+        return jsonify({"error": "Archipelago server not running"}), 404
+    
+    with conn.cursor() as cur:
+        cur.execute("SELECT admin FROM rooms WHERE room_id = %s", (room_id,))
+        admin = cur.fetchone()[0]
 
-        if state.running_process is None:
-            return jsonify({"error": "Archipelago server not running"}), 404
-
-        if session.get('userinfo').get('uuid') != state.admin:
+        if session.get('userinfo').get('uuid') != admin:
             return jsonify({"error": "user is not admin"}), 403
         
         data = request.get_json()
         command: str = data.get('command')
-        state.running_process.stdin.write((command + '\n').encode())
-        state.running_process.stdin.flush()
+        rooms[room_id].stdin.write((command + '\n').encode())
+        rooms[room_id].stdin.flush()
 
         if command.startswith('/release') and len(command.split(' ')) == 2:
-            state.released_games[command.split(' ')[1].lower()] = ""
-            save_state(room_id, state)
+            cur.execute("INSERT INTO released_games VALUES (%s, %s)", (command.split(' ')[1].lower(), room_id))
+            conn.commit()
 
         return jsonify({"message": "ok"})
-    else:
-        if rooms[room_id] is None:
-            return jsonify({"error": "Archipelago server not running"}), 404
-        
-        with conn.cursor() as cur:
-            cur.execute("SELECT admin FROM rooms WHERE room_id = %s", (room_id,))
-            admin = cur.fetchone()[0]
-
-            if session.get('userinfo').get('uuid') != admin:
-                return jsonify({"error": "user is not admin"}), 403
-            
-            data = request.get_json()
-            command: str = data.get('command')
-            rooms[room_id].stdin.write((command + '\n').encode())
-            rooms[room_id].stdin.flush()
-
-            if command.startswith('/release') and len(command.split(' ')) == 2:
-                cur.execute("INSERT INTO released_games VALUES (%s, %s)", (command.split(' ')[1].lower(), room_id))
-                conn.commit()
-
-            return jsonify({"message": "ok"})
 
 """
 Gets all the players participating in the multiworld and relevant data
@@ -612,21 +506,13 @@ def get_players(room_id):
     if room_id not in rooms:
         return jsonify({"error": "No archipelago game with this id"}), 404
 
-    state: ServerState = None
-    if not conn:
-        state = rooms[room_id]
-    else:
-        with conn.cursor() as cur:
-            cur.execute("SELECT arch_file_path, extract_folder_path FROM rooms WHERE room_id = %s", (room_id,))
-            info = cur.fetchone()
-            
-            state = ServerState()
-            state.arch_file_path = info[0]
-            state.extract_folder_path= info[1]
+    with conn.cursor() as cur:
+        cur.execute("SELECT arch_file_path, extract_folder_path FROM rooms WHERE room_id = %s", (room_id,))
+        info = cur.fetchone()
     
-    players = multidata.get_players(state)
+        players = multidata.get_players(info[0], info[1])
 
-    return jsonify({"players": players})
+        return jsonify({"players": players})
 
 
 """
@@ -710,140 +596,56 @@ def restart_all():
     global rooms
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-    if not conn:
-        with os.scandir(UPLOAD_FOLDER) as uploads:
-            for server in uploads:
-                if server.is_dir():
-                    if os.path.isfile(f"{server.path}/state.json"):
-                        with open(f"{server.path}/state.json") as f:
-                            data = json.load(f)
+    with conn.cursor() as cur:
+        cur.execute("SELECT room_id, port, extract_folder_path, arch_file_path FROM rooms")
+        rooms_db = cur.fetchall()
+        
+        for room in rooms_db:
+            room_id = room[0]
+            extract_folder_path = room[2]
+            arch_file_path = room[3]
 
-                            room_id = data["room_id"]
-                            state: ServerState = ServerState()
-                            state.arch_file_path = data["arch_file_path"]
-                            state.extract_folder_path = data["extract_folder_path"]
-                            
-                            # Integer keys get changed to strings when serialised
-                            location_info = {}
-                            for slot in data["location_info"]: 
-                                location_info[int(slot)] = {int(k): v for k, v in data["location_info"][slot].items()}
-                            state.location_info = location_info
+            if not os.path.isfile(arch_file_path):
+                continue
 
-                            ids = {}
-                            for game in data["ids"]:
-                                ids[game] = {}
-                                ids[game]["id_to_item_name"] = {int(k): v for k, v in data["ids"][game]["id_to_item_name"].items()}
-                            state.ids = ids
-
-                            state.slotinfos = {int(k): v for k, v in data["slotinfos"].items()}
-                            state.port = data["port"]
-                            state.admin = data["admin"]
-                            state.start = datetime.fromtimestamp(data["start"])
-                            state.released_games = data["released_games"]
-
-                            # Attempt to connect to the same port. If unavailable, try new ones
-                            ports = [state.port]
-                            first = True
-                            for port in ports:
-                                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                                    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                                    try:
-                                        s.bind(("localhost", port))
-                                        state.port = port
-                                    except OSError:
-                                        state.port = None
-                                        if first:
-                                            ports = ports + random.sample(range(SERVER_PORT, SERVER_PORT+PORT_RANGE), RETRY)
-                                            first = False
-                            
-                            if state.port is None:
-                                return jsonify({"error": "could not find a port to restart the server on"}), 500
-                            
-                            state.running_process = subprocess.Popen(
-                                ["python3", ARCHIPELAGO_SERVER, state.arch_file_path, f"--port={state.port}", f"--auto_shutdown={SHUTDOWN_TIME}"],
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.STDOUT,
-                                stdin=subprocess.PIPE,
-                                env={**os.environ, "HOME": UPLOAD_FOLDER}
-                            )
-
-                            logpath = f"{state.extract_folder_path}/server-log.txt"
-
-                            thread = threading.Thread(target=write_log, args=(state.running_process, logpath, room_id))
-                            thread.daemon = True
-                            thread.start()
-
-                            save_state(room_id, state)
-
-                            rooms[room_id] = state
-    else:
-        with conn.cursor() as cur:
-            cur.execute("SELECT room_id, port, extract_folder_path, arch_file_path FROM rooms")
-            rooms_db = cur.fetchall()
+            # Attempt to connect to the same port. If unavailable, try new ones
+            ports = [room[1]]
+            first = True
+            port = None
+            for try_port in ports:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                    try:
+                        s.bind(("localhost", try_port))
+                        port = try_port
+                    except OSError:
+                        port = None
+                        if first:
+                            ports = ports + random.sample(range(SERVER_PORT, SERVER_PORT+PORT_RANGE), RETRY)
+                            first = False
             
-            for room in rooms_db:
-                room_id = room[0]
-                extract_folder_path = room[2]
-                arch_file_path = room[3]
+            if port is None:
+                return jsonify({"error": "could not find a port to restart the server on"}), 500
+            
+            running_process = subprocess.Popen(
+                ["python3", ARCHIPELAGO_SERVER, arch_file_path, f"--port={port}", f"--auto_shutdown={SHUTDOWN_TIME}"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                stdin=subprocess.PIPE,
+                env={**os.environ, "HOME": UPLOAD_FOLDER}
+            )
 
-                # Attempt to connect to the same port. If unavailable, try new ones
-                ports = [room[1]]
-                first = True
-                real_port = None
-                for port in ports:
-                    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                        try:
-                            s.bind(("localhost", port))
-                            real_port = port
-                        except OSError:
-                            real_port = None
-                            if first:
-                                ports = ports + random.sample(range(SERVER_PORT, SERVER_PORT+PORT_RANGE), RETRY)
-                                first = False
-                
-                if real_port is None:
-                    return jsonify({"error": "could not find a port to restart the server on"}), 500
-                
-                running_process = subprocess.Popen(
-                    ["python3", ARCHIPELAGO_SERVER, arch_file_path, f"--port={real_port}", f"--auto_shutdown={SHUTDOWN_TIME}"],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                    stdin=subprocess.PIPE,
-                    env={**os.environ, "HOME": UPLOAD_FOLDER}
-                )
+            cur.execute("UPDATE rooms SET port = %s, restarting = %s WHERE room_id = %s", (port, False, room_id))
 
-                cur.execute("UPDATE rooms SET port = %s, restarting = %s WHERE room_id = %s", (real_port, False, room_id))
+            logpath = f"{extract_folder_path}/server-log.txt"
 
-                logpath = f"{extract_folder_path}/server-log.txt"
+            thread = threading.Thread(target=write_log, args=(running_process, logpath, room_id))
+            thread.daemon = True
+            thread.start()
 
-                thread = threading.Thread(target=write_log, args=(running_process, logpath, room_id))
-                thread.daemon = True
-                thread.start()
+            rooms[room_id] = running_process
 
-                rooms[room_id] = running_process
-
-            conn.commit()
-
-
-"""
-Saves the current server state into a json file
-"""
-def save_state(room_id, state: ServerState):
-    data = {
-        "room_id": room_id,
-        "arch_file_path": state.arch_file_path,
-        "extract_folder_path": state.extract_folder_path,
-        "location_info": state.location_info,
-        "ids": state.ids,
-        "slotinfos": state.slotinfos,
-        "port": state.port,
-        "admin": state.admin,
-        "start": state.start.timestamp(),
-        "released_games": state.released_games
-    }
-    with open(f"{state.extract_folder_path}/state.json", "w") as f:
-        json.dump(data, f)
+        conn.commit()
 
 """
 Writes the stdout of a process to a file
@@ -898,15 +700,39 @@ def db_connection():
 
     conn = psycopg.connect(dbname=DB_NAME, user=DB_USER, password=DB_PASS, host=DB_HOST)
 
+"""
+Creates schema of database if it doesn't exist already
+"""
+def apply_migrations():
+    with conn.cursor() as cur:
+        cur.execute("""CREATE TABLE IF NOT EXISTS migrations (
+            id       serial
+                constraint migrations_pk
+                    primary key,
+            filename text not null,
+            applied  timestamp default now()
+        );""")
+        conn.commit()
+
+        applied = set()
+        cur.execute("SELECT filename FROM migrations")
+        for row in cur.fetchall():
+            applied.add(row[0])
+        
+        migration_files = sorted(os.listdir("migrations"))
+        for filename in migration_files:
+            if filename.endswith(".sql") and filename not in applied:
+                with open(f"migrations/{filename}") as f:
+                    cur.execute(f.read())
+                cur.execute("INSERT INTO migrations (filename) VALUES (%s)", (filename,))
+                conn.commit()
+
 app.register_blueprint(api, url_prefix='/api')
 
 if __name__ == "__main__":
     with app.app_context():
-        try:
-            conn = psycopg.connect(dbname=DB_NAME, user=DB_USER, password=DB_PASS, host=DB_HOST)
-        except psycopg.OperationalError:
-            conn = None
-
+        conn = psycopg.connect(dbname=DB_NAME, user=DB_USER, password=DB_PASS, host=DB_HOST)
+        apply_migrations()
         restart_all()
         atexit.register(cleanup)
     app.run(debug=True, port=5001, use_reloader=False, host="0.0.0.0")

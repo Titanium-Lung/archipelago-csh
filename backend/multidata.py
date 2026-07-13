@@ -12,8 +12,8 @@ from server_state import ServerState
 Returns all of the players in the multiworld and relevant info
 Info including slot id, name, game, and also matches them to any patch file 
 """
-def get_players(state: ServerState):
-    with open(state.arch_file_path, "rb") as f:
+def get_players(arch_file_path, extract_folder_path):
+    with open(arch_file_path, "rb") as f:
         data = f.read()
     
     decoded = restricted_loads(zlib.decompress(data[1:]))
@@ -23,7 +23,7 @@ def get_players(state: ServerState):
         for slot_id, info, in decoded["slot_info"].items()
     ]
 
-    with os.scandir(state.extract_folder_path) as folder:
+    with os.scandir(extract_folder_path) as folder:
         for file in folder:
             if file.is_file():
                 if "P" in file.name[2:]:

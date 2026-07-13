@@ -6,16 +6,29 @@ An Archipelago hosting website for the Computer Science House
 
 First, choose with branch you want to run. The default branch is `dev`, but `main` is the most stable version. 
 
-Clone this project, then go into the `backend` folder and create a `.env` file. 
+### Setup
 
-This contains: 
+This project requires a Postgres database to store information about ongoing archipelago games. All you have to do is create a Postgres server; running the program will create the schema. The easiest way is using [Docker](https://hub.docker.com/_/postgres): 
+
+```
+docker run --name postgres-database -p 5432:5432 -e POSTGRES_PASSWORD=mysecretpassword postgres
+```
+
+This creates a docker container named `postgres-database` which is running a Postgres database server named `postgres`, with one user of username: `postgres` and password: `mysecretpassword`. This container needs to be running while the project is. 
+
+Your database can also be created directly on your computer by installing Postgres [here](https://www.postgresql.org/download/). 
+
+After creating your database, clone this project, then go into the `backend` folder and create a `.env` file. 
+
+This should contain: 
 
 ```
 OIDC_CLIENT_ID=client_id
 OIDC_CLIENT_SECRET=client_secret
+DB_PASS=mysecretpassword
 ```
 
-Reach out to an RTP (or this project's owner) for the client id and secret. 
+Reach out to an RTP (or this project's owner) for the client id and secret. DB_NAME and DB_USER can also be customised here; they are `postgres` by default.
 
 In the `frontend` folder, create a `.env` file with: `VITE_BACKEND_URL=http://localhost:5001/api`. 
 
@@ -63,7 +76,7 @@ The frontend takes in a zip file and sends it to the backend, which extracts it 
 
 ### Restarting the rooms
 
-All archipelago rooms that are stored are restarted when the program boots up, using the information the backend writes to a json file in the same directory as the .archipelago and .apsave for each room. 
+All archipelago rooms that are stored are restarted when the program boots up, using the information saved in the database. 
 
 ## Planned features
 

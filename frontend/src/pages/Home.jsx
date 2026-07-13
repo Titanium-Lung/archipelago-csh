@@ -15,8 +15,6 @@ function Home() {
     const [port, setPort] = useState("")
     const [roomId, setRoomId] = useState("")
 
-    const [roomsDB, setRoomsDB] = useState([])
-
     useEffect(() => {
         async function fetchRooms() {
             const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/rooms`, {
@@ -32,21 +30,6 @@ function Home() {
             } 
         }
         fetchRooms()
-    }, [])
-
-    useEffect(() => {
-        async function fetchRoomsDB() {
-            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/roomsdb`, {
-                method: "GET"
-            })
-
-            const result = await response.json()
-
-            if (response.ok) {
-                setRoomsDB(result.rooms)
-            }
-        }
-        fetchRoomsDB()
     }, [])
 
     // For file picker
