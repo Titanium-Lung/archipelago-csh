@@ -56,9 +56,9 @@ PORT_RANGE = app.config['PORT_RANGE']
 RETRY = app.config['RETRY']
 SHUTDOWN_TIME = 7200
 
-DB_HOST = "postgres.csh.rit.edu"
-DB_NAME = "archipelagodb"
-DB_USER = "archipelagodb"
+DB_HOST = app.config['DB_HOST']
+DB_NAME = app.config['DB_NAME']
+DB_USER = app.config['DB_USER']
 DB_PASS = app.config['DB_PASS']
 conn = None
 
@@ -455,7 +455,7 @@ def restart_server(room_id):
         if port is None:
             return jsonify({"error": "could not find a port to restart the server on"}), 500
         
-        running_process = subprocess.Popen(
+        new_running_process = subprocess.Popen(
             ["python3", ARCHIPELAGO_SERVER, arch_file_path, f"--port={port}", f"--auto_shutdown={SHUTDOWN_TIME}"],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -463,9 +463,23 @@ def restart_server(room_id):
             env={**os.environ, "HOME": UPLOAD_FOLDER}
         )
 
+        # If the subprocess failed to start, error
+        time.sleep(1)
+        if new_running_process.poll() is not None:
+            if not conn:
+                state.restarting = False
+                state.running_process = None
+            else:
+                with conn.cursor() as cur:
+                    cur.execute("UPDATE rooms SET restarting = %s WHERE room_id = %s", (False, room_id))
+                    cur.commit()
+                rooms[room_id] = None
+            
+            return jsonify({"error": "the subprocess failed to start"}), 500
+
         logpath = f"{extract_folder_path}/server-log.txt"
 
-        thread = threading.Thread(target=write_log, args=(running_process, logpath, room_id))
+        thread = threading.Thread(target=write_log, args=(new_running_process, logpath, room_id))
         thread.daemon = True
         thread.start()
 
@@ -479,10 +493,12 @@ def restart_server(room_id):
 
         if not conn:
             state.restarting = False
+            state.running_process = new_running_process
         else:
             with conn.cursor() as cur:
-                cur.execute("UPDATE rooms SET restarting = %s WHERE room_id = %s", (False, room_id))
+                cur.execute("UPDATE rooms SET restarting = %s, port = %s WHERE room_id = %s", (False, port, room_id))
                 conn.commit()
+            rooms[room_id] = new_running_process
 
         return jsonify(result)
     else:
@@ -886,7 +902,11 @@ app.register_blueprint(api, url_prefix='/api')
 
 if __name__ == "__main__":
     with app.app_context():
-        conn = psycopg.connect(dbname=DB_NAME, user=DB_USER, password=DB_PASS, host=DB_HOST)
+        try:
+            conn = psycopg.connect(dbname=DB_NAME, user=DB_USER, password=DB_PASS, host=DB_HOST)
+        except psycopg.OperationalError:
+            conn = None
+
         restart_all()
         atexit.register(cleanup)
     app.run(debug=True, port=5001, use_reloader=False, host="0.0.0.0")

@@ -33,5 +33,11 @@ PORT_RANGE = int(os.environ.get('PORT_RANGE',
 RETRY = int(os.environ.get('RETRY',
                        PORT_RANGE))
 
+DB_HOST = os.environ.get('DB_HOST',
+                         "postgres.csh.rit.edu")
+DB_NAME = os.environ.get('DB_NAME',
+                         "archipelagodb")
+DB_USER = os.environ.get('DB_USER',
+                         ' ')
 DB_PASS = os.environ.get('DB_PASS',
                          ' ')
