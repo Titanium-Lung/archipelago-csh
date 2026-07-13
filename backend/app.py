@@ -150,10 +150,6 @@ def upload_file():
     file.save(zip_save_path)
 
     room_id = str(uuid.uuid4())
-    state: ServerState = ServerState()
-
-    state.port = port
-    state.extract_folder_path = extract_folder_path
 
     filename = None
 
@@ -163,86 +159,70 @@ def upload_file():
             if name.endswith(".archipelago"):
                 filename = name
 
-        zf.extractall(path=state.extract_folder_path)
+        zf.extractall(path=extract_folder_path)
         os.remove(zip_save_path)
     
     if filename is None:
         return jsonify({"error": "No archipelago file found in zip"}), 400
 
-    state.arch_file_path = os.path.join(state.extract_folder_path, filename)
+    arch_file_path = os.path.join(extract_folder_path, filename)
 
-    with open(state.arch_file_path, "rb") as f:
+    with open(arch_file_path, "rb") as f:
         data = f.read()
         decoded_arch = restricted_loads(zlib.decompress(data[1:]))
 
         # Build ids dict which contains what id goes to each item/location for each game
-        state.ids = {}
+        ids = {}
         for game in decoded_arch["datapackage"]:
             subdict = decoded_arch["datapackage"][game]
-            state.ids[game] = {}
-            state.ids[game]['id_to_item_name'] = {v: k for k, v in subdict['item_name_to_id'].items()}
-            state.ids[game]['id_to_location_name'] = {v: k for k, v in subdict['location_name_to_id'].items()}
+            ids[game] = {}
+            ids[game]['id_to_item_name'] = {v: k for k, v in subdict['item_name_to_id'].items()}
+            ids[game]['id_to_location_name'] = {v: k for k, v in subdict['location_name_to_id'].items()}
         
-        # Build location_info dict which contains every location and all the info about it
-        # Also build a list of every location to be inserted into the database
-        # Structure is: location_info = {slot#: {location_id: {name, sphere, from, game, to, location_name, item_name}}}
+        # Also build a list of every location and all the info about it to be inserted into the database
+        # Also the name and game of every slot
         locations = []
+        slotinfos = {}
         sphere_num = 1
         for sphere in decoded_arch["spheres"]:
             for slot in sphere:
                 slotinfo = decoded_arch["slot_info"][slot]
-                state.slotinfos[slot] = {"name": slotinfo.name, "game": slotinfo.game}
-                if slot not in state.location_info:
-                    state.location_info[slot] = {}
-
+                slotinfos[slot] = {"name": slotinfo.name, "game": slotinfo.game}
                 for location_id in sphere[slot]:
-                    state.location_info[slot][location_id] = {}
-
-                    state.location_info[slot][location_id]["sphere"] = sphere_num
-                    state.location_info[slot][location_id]["from"] = slotinfo.name
-                    state.location_info[slot][location_id]["game"] = slotinfo.game
-
                     location_tuple = decoded_arch["locations"][slot][location_id] # format is: (item_id, receiver_slot_id, unknown#)
-                    state.location_info[slot][location_id]["to"] = decoded_arch["slot_info"][location_tuple[1]].name
-                    state.location_info[slot][location_id]["location_name"] = state.ids[slotinfo.game]['id_to_location_name'][location_id]
-                    state.location_info[slot][location_id]["item_name"] = state.ids[decoded_arch["slot_info"][location_tuple[1]].game]['id_to_item_name'][location_tuple[0]]
 
-                    to_name = state.location_info[slot][location_id]['to']
-                    location_name = state.location_info[slot][location_id]['location_name']
+                    to_name = decoded_arch["slot_info"][location_tuple[1]].name
+                    location_name = ids[slotinfo.game]['id_to_location_name'][location_id]
                     if len(location_name) > 255:
                         location_name = location_name[:255]
-                    item_name = state.location_info[slot][location_id]['item_name']
+                    item_name = ids[decoded_arch["slot_info"][location_tuple[1]].game]['id_to_item_name'][location_tuple[0]]
 
                     locations.append((slot, location_id, sphere_num, slotinfo.name, slotinfo.game, to_name, location_name, item_name, room_id))
             sphere_num+=1
 
-        # Id to location name is not used anywhere else
-        for game in state.ids:
-            state.ids[game].pop('id_to_location_name', None)
-    
-    state.admin = session.get('userinfo').get('uuid')
-    state.start = datetime.now()
+    admin = session.get('userinfo').get('uuid')
+    start = datetime.now()
     
     with conn.cursor() as cur:
         cur.execute("INSERT INTO rooms VALUES (%s, %s, %s, %s, %s, %s, %s)", 
-                    (room_id, try_port, state.admin, extract_folder_path, state.arch_file_path, False, state.start))
+                    (room_id, try_port, admin, extract_folder_path, arch_file_path, False, start))
 
         with cur.copy("COPY locations (slot, location_id, sphere, from_name, game, to_name, location_name, item_name, room_id) FROM STDIN") as copy:
             for location in locations:
                 copy.write_row(location)
         
         slots = []
-        for slot in state.slotinfos:
-            slots.append((slot, state.slotinfos[slot]['name'], state.slotinfos[slot]['game'], room_id))
+        for slot in slotinfos:
+            slots.append((slot, slotinfos[slot]['name'], slotinfos[slot]['game'], room_id))
         
         with cur.copy("COPY slots (id, name, game, room_id) FROM STDIN") as copy:
             for slot in slots:
                 copy.write_row(slot)
         
         items = []
-        for game in state.ids:
-            for item_id in state.ids[game]['id_to_item_name']:
-                items.append((game, state.ids[game]['id_to_item_name'][item_id], item_id, room_id))
+        for game in ids:
+            for item_id in ids[game]['id_to_item_name']:
+                items.append((game, ids[game]['id_to_item_name'][item_id], item_id, room_id))
         
         with cur.copy("COPY items (game, name, id, room_id) FROM STDIN") as copy:
             for item in items:
@@ -250,25 +230,22 @@ def upload_file():
 
         conn.commit()
 
-    if state.running_process is not None:
-        state.running_process.terminate()
-    
     running_process = subprocess.Popen(
-        ["python3", ARCHIPELAGO_SERVER, state.arch_file_path, f"--port={state.port}", f"--auto_shutdown={SHUTDOWN_TIME}"],
+        ["python3", ARCHIPELAGO_SERVER, arch_file_path, f"--port={port}", f"--auto_shutdown={SHUTDOWN_TIME}"],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         stdin=subprocess.PIPE,
         env={**os.environ, "HOME": UPLOAD_FOLDER}
     )
 
-    logpath = f"{state.extract_folder_path}/server-log.txt"
+    logpath = f"{extract_folder_path}/server-log.txt"
 
     # Make the log file exist (don't know if I need to do this)
     with open(logpath, "w") as f:
         f.write("")
 
     # Separate thread to write stdout to a log file
-    thread = threading.Thread(target=write_log, args=(state.running_process, logpath, room_id))
+    thread = threading.Thread(target=write_log, args=(running_process, logpath, room_id))
     thread.daemon = True
     thread.start()
 
@@ -276,7 +253,7 @@ def upload_file():
 
     result = {
         "message": "Server started",
-        "port": state.port,
+        "port": port,
         "room_id": room_id
     }
 
@@ -514,7 +491,6 @@ def get_players(room_id):
 
         return jsonify({"players": players})
 
-
 """
 Sends the requested file 
 """
@@ -683,11 +659,10 @@ When program closes, stop all running rooms
 def cleanup():
     global rooms
     for room_id in rooms:
-        state = rooms[room_id]
-        if state.running_process is not None:
+        if rooms[room_id] is not None:
             print(f"Shutting down Archipelago Server with id {room_id}...")
-            state.running_process.terminate()
-            state.running_process.wait()
+            rooms[room_id].terminate()
+            rooms[room_id].wait()
     
     if conn:
         conn.close()
