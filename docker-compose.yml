@@ -1,7 +1,7 @@
 services:
   backend:
     build: ./backend
-    command: python3 app.py
+    command: python3 -u app.py
     ports:
       - "5001:5001"
       - "38281-38301:38281-38301"

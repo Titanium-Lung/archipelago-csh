@@ -545,7 +545,7 @@ def individual_tracker_data(room_id, slot):
         cur.execute("SELECT extract_folder_path, arch_file_path FROM rooms WHERE room_id = %s", (room_id,))
         info = cur.fetchone()
 
-        items, locations, hints = multidata.individual_player_data(info[0], info[1], room_id, slot)
+        items, locations, hints = multidata.individual_player_data(info[0], info[1], room_id, slot, conn)
 
         cur.execute("SELECT name FROM slots WHERE room_id = %s AND id = %s", (room_id, slot))
         name = cur.fetchone()[0]

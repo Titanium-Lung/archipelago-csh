@@ -189,7 +189,7 @@ def multitracker_data(arch_file_path, extract_folder_path, released_games, conn,
 """
 Gets received items, locations, and hints for one player
 """
-def individual_player_data(extract_folder_path, arch_file_path, room_id, slot: int):
+def individual_player_data(extract_folder_path, arch_file_path, room_id, slot: int, conn):
     with open(arch_file_path, "rb") as f:
         data = f.read()
     
@@ -199,74 +199,101 @@ def individual_player_data(extract_folder_path, arch_file_path, room_id, slot: i
     locations: list = []
     hints: list = []
 
-    # Get all the locations ahead of time no matter whether there's an apsave
-    for location_num in decoded_arch["locations"][slot]:
-        location = {}
-        location["name"] = state.location_info[slot][location_num]["location_name"]
-        location["checked"] = False
-        location["number"] = location_num
-        locations.append(location)
+    with conn.cursor() as cur:
+        # Get all the locations ahead of time no matter whether there's an apsave
+        cur.execute("SELECT location_name, location_id FROM locations WHERE room_id = %s AND slot = %s", (room_id, slot))
+        locations_db = cur.fetchall()
 
-    count = 1 # Tracks order of received items
-    for item in decoded_arch["precollected_items"][slot]:
-        item_name = state.ids[state.slotinfos[slot]["game"]]["id_to_item_name"][item]
-        # Add or Update
-        if item_name in items:
-            items[item_name]["count"] += 1
-        else:
-            items[item_name] = {}
-            items[item_name]["count"] = 1
-        items[item_name]["last_order_received"] = count
-        count+=1
+        for location_info in locations_db:
+            location = {}
+            location["name"] = location_info[0]
+            location["checked"] = False
+            location["number"] = location_info[1]
+            locations.append(location)
 
-    with os.scandir(extract_folder_path) as folder:
-        # Scan uploaded folder for apsave
-        for file in folder:
-            if file.is_file():
-                if file.name.endswith(".apsave"):
-                    with open(file.path, "rb") as f:
-                        decoded_apsave = restricted_loads(zlib.decompress(f.read()))
+        cur.execute("""SELECT i.id, i.name FROM items as i, slots as s
+                    WHERE i.room_id = %s AND s.room_id = i.room_id AND s.id = %s AND i.game = s.game""", (room_id, slot))
+        items_db = cur.fetchall()
+        item_infos = {}
+        for item_info in items_db:
+            item_infos[item_info[0]] = {}
+            item_infos[item_info[0]]['name'] = item_info[1]
 
-                        if (0, slot, True) in decoded_apsave["received_items"]: # (0, slot, True) is format of received_items dict in the apsave
-                            for item_info in decoded_apsave["received_items"][(0, slot, True)]: # hard codes team number to 0
-                                item_name = state.ids[state.slotinfos[slot]["game"]]["id_to_item_name"][item_info.item]
-                                
-                                if item_name in items:
-                                    items[item_name]["count"] += 1
-                                else:
-                                    items[item_name] = {}
-                                    items[item_name]["count"] = 1
-                                items[item_name]["last_order_received"] = count
-                                count+=1
-                        
-                        for location in locations:
-                            if (0, slot) in decoded_apsave["location_checks"]:
-                                if location["number"] in decoded_apsave["location_checks"][(0, slot)]:
-                                    location["checked"] = True
+        count = 1 # Tracks order of received items
+        for item in decoded_arch["precollected_items"][slot]:
+            item_name = item_infos[str(item)]['name']
+            # Add or Update
+            if item_name in items:
+                items[item_name]["count"] += 1
+            else:
+                items[item_name] = {}
+                items[item_name]["count"] = 1
+            items[item_name]["last_order_received"] = count
+            count+=1
+
+        with os.scandir(extract_folder_path) as folder:
+            # Scan uploaded folder for apsave
+            for file in folder:
+                if file.is_file():
+                    if file.name.endswith(".apsave"):
+                        with open(file.path, "rb") as f:
+                            decoded_apsave = restricted_loads(zlib.decompress(f.read()))
+
+                            if (0, slot, True) in decoded_apsave["received_items"]: # (0, slot, True) is format of received_items dict in the apsave
+                                for item_info in decoded_apsave["received_items"][(0, slot, True)]: # item_info has .item, .location, .player (all ids) (and also .flags)
+                                    item_name = item_infos[str(item_info.item)]['name']
+                                    
+                                    if item_name in items:
+                                        items[item_name]["count"] += 1
+                                    else:
+                                        items[item_name] = {}
+                                        items[item_name]["count"] = 1
+                                    items[item_name]["last_order_received"] = count
+                                    count+=1
+                            
+                            for location in locations:
+                                if (0, slot) in decoded_apsave["location_checks"]:
+                                    if int(location["number"]) in decoded_apsave["location_checks"][(0, slot)]:
+                                        location["checked"] = True
+                                    else:
+                                        location["checked"] = False
                                 else:
                                     location["checked"] = False
-                            else:
-                                location["checked"] = False
-                        
-                        if (0, slot) in decoded_apsave["hints"]:
-                            for hint_info in decoded_apsave["hints"][(0, slot)]: # Hard codes team to 0
-                                receiving_slot = hint_info.finding_player
-                                hint = {}
-                                hint["location"] = state.location_info[receiving_slot][hint_info.location]["location_name"]
-                                hint["receiving_player"] = state.location_info[receiving_slot][hint_info.location]["to"]
-                                hint["finding_player"] = state.location_info[receiving_slot][hint_info.location]["from"]
-                                hint["item"] = state.location_info[receiving_slot][hint_info.location]["item_name"]
-                                hint["game"] = state.location_info[receiving_slot][hint_info.location]["game"]
+                            
+                            if (0, slot) in decoded_apsave["hints"]:
+                                slot_hints = ([], [])
+                                for hint_info in decoded_apsave["hints"][(0, slot)]: # Hard codes team to 0
+                                    slot_hints[0].append((room_id, int(hint_info.finding_player), str(hint_info.location)))
+                                    slot_hints[1].append((hint_info.entrance, hint_info.found, str(hint_info.location)))
 
-                                if hint_info.entrance.strip():
-                                    hint["entrance"] = hint_info.entrance
-                                else:
-                                    hint["entrance"] = "Vanilla"
-                                hint["found"] = hint_info.found
+                                # Database doesn't store entrance or found, so line up both lists by location_id (extremely scuffed)
+                                extra_hint_info = sorted(slot_hints[1], key=lambda x: x[2])
 
-                                hints.append(hint)
-    
-    return items, locations, hints
+                                cur.executemany("""SELECT location_name, to_name, from_name, item_name, game, location_id FROM locations 
+                                    WHERE room_id = %s AND slot = %s AND location_id = %s""", slot_hints[0], returning=True)
+                                loc_infos = [cur.fetchone() for _ in cur.results()]
+                                # print(loc_infos)
+                                loc_infos = sorted(loc_infos, key=lambda x: x[5])
+
+                                for index in range(len(loc_infos)):
+                                    loc_info = loc_infos[index]
+                                    hint_info = extra_hint_info[index]
+                                
+                                    hint = {}
+                                    hint["location"] = loc_info[0]
+                                    hint["receiving_player"] = loc_info[1]
+                                    hint["finding_player"] = loc_info[2]
+                                    hint["item"] = loc_info[3]
+                                    hint["game"] = loc_info[4]
+                                    if hint_info[0].strip():
+                                        hint["entrance"] = hint_info[0]
+                                    else:
+                                        hint["entrance"] = "Vanilla"
+                                    hint["found"] = hint_info[1]
+
+                                    hints.append(hint)
+        
+        return items, locations, hints
 
 """
 Gets the info of every item received by all players 
