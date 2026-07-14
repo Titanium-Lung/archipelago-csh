@@ -1,7 +1,7 @@
 import { useParams, Link, useNavigate } from "react-router-dom"
 import { useEffect, useState } from "react"
 import { useUser } from "../UserContext"
-import logo from "../assets/CSH Archipelago Logo.svg"
+import { Navbar } from "../Navbar"
 
 function Tracker() {
     const { roomId, slot } = useParams()
@@ -206,46 +206,11 @@ function Tracker() {
     return (
         <div>
             <title>{`${slotName}'s Tracker`}</title>
-            <nav className="navbar navbar-expand-lg navbar-dark navbar-sticky bg-primary px-3 px-md-5 mb-4">
-                <a className="navbar-brand" href="/">
-                    <img src={logo} style={{ height: "40px", width: "auto" }} /> Archipelago
-                </a>
-                <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarColor01" aria-controls="navbarColor01" aria-expanded="false" aria-label="Toggle navigation">
-                    <span className="navbar-toggler-icon"></span>
-                </button>
-
-                <div className="collapse navbar-collapse" id="navbarColor01">
-
-                    <ul className="navbar-nav me-auto">
-                        <li className="nav-item active">
-                            <a className="nav-link" href="/">Home</a>
-                        </li>
-                        <li className="nav-item">
-                            <a className="nav-link" href="https://github.com/Titanium-Lung/archipelago-csh">Github</a>
-                        </li>
-                    </ul>
-                    <ul className="nav navbar-nav">
-                        <li className="nav-item navbar-user dropdown">
-                            <a className="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" id="user01">
-                            <img src={user?.picture_url} style={{ height: "40px", width: "auto", padding: "5px"}} className="rounded-circle"/>
-                            {user?.username}
-                            <span className="caret"></span>
-                            </a>
-                            <div className="dropdown-menu" aria-labelledby="user01">
-                                <a className="dropdown-item" href="https://github.com/Titanium-Lung/archipelago-csh/issues">Report an issue</a>
-                                <a className="dropdown-item" href={`https://profiles.csh.rit.edu/user/${user?.username}`}>Profile</a>
-                                <a className="dropdown-item" href="/settings">Settings</a>
-                                <div className="dropdown-divider"></div>
-                                <a className="dropdown-item" href={`${import.meta.env.VITE_BACKEND_URL}/logout`}>Logout</a>
-                            </div>
-                        </li>
-                    </ul>
-                </div>
-            </nav>
+            <Navbar user={user}></Navbar>
             <div className="mx-md-5">
                 <button className="btn btn-primary" onClick={sendToMultiTracker}>Back to Multiworld Tracker</button>
             </div>
-            <h1 style={{textAlign: 'center'}}>Individual Tracker</h1>
+            <h1 className="text-center">Individual Tracker</h1>
             <div className="mx-md-5 m-3">
                 <input type="text" id="input" name="search" placeholder="Search" value={itemFilter} onChange={e => setItemFilter(e.target.value)} />
                 <button className="btn btn-primary" onClick={() => collapseItems ? setCollapseItems(false) : setCollapseItems(true)} style={{ marginLeft: '10px' }}>Collapse</button>
@@ -270,7 +235,7 @@ function Tracker() {
                     </tbody>
                 </table>
             </div>
-            <h2 style={{textAlign: 'center'}}>Location Checks</h2>
+            <h2 className="text-center">Location Checks</h2>
             <div className="mx-md-5 m-3">
                 <input type="text" id="input" name="search" placeholder="Search" value={locationFilter} onChange={e => setLocationFilter(e.target.value)} />
                 <button className="btn btn-primary" onClick={() => collapseLocations ? setCollapseLocations(false) : setCollapseLocations(true)} style={{ marginLeft: '10px' }}>Collapse</button>
@@ -308,7 +273,7 @@ function Tracker() {
                     </div>
                 )
             }
-            <h2 style={{textAlign: 'center'}}>Hints</h2>
+            <h2 className="text-center">Hints</h2>
             <div className="mx-md-5 m-3">
                 <input type="text" id="input" name="search" placeholder="Search" value={filterHints} onChange={e => setFilterHints(e.target.value)} />
                 <button className="btn btn-primary" onClick={() => collapseHints ? setCollapseHints(false) : setCollapseHints(true)} style={{ marginLeft: '10px' }}>Collapse</button>
