@@ -191,8 +191,6 @@ def upload_file():
 
                     to_name = decoded_arch["slot_info"][location_tuple[1]].name
                     location_name = ids[slotinfo.game]['id_to_location_name'][location_id]
-                    if len(location_name) > 255:
-                        location_name = location_name[:255]
                     item_name = ids[decoded_arch["slot_info"][location_tuple[1]].game]['id_to_item_name'][location_tuple[0]]
 
                     locations.append((slot, location_id, sphere_num, slotinfo.name, slotinfo.game, to_name, location_name, item_name, room_id))
@@ -268,7 +266,7 @@ def get_all_rooms():
     data = request.get_json().get("data")
 
     with conn.cursor() as cur:
-        cur.execute("SELECT room_id, port, start, admin FROM rooms")
+        cur.execute("SELECT room_id, port, start, admin FROM rooms WHERE port >= %s AND port < %s", (SERVER_PORT, SERVER_PORT+PORT_RANGE))
         db_rooms = cur.fetchall()
         for room in db_rooms:
             room_info = {}
@@ -576,7 +574,7 @@ def restart_all():
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
     with conn.cursor() as cur:
-        cur.execute("SELECT room_id, port, extract_folder_path, arch_file_path FROM rooms")
+        cur.execute("SELECT room_id, port, extract_folder_path, arch_file_path FROM rooms WHERE port >= %s AND port < %s", (SERVER_PORT, SERVER_PORT+PORT_RANGE))
         rooms_db = cur.fetchall()
         
         for room in rooms_db:
@@ -687,8 +685,7 @@ def apply_migrations():
             id       serial
                 constraint migrations_pk
                     primary key,
-            filename text not null,
-            applied  timestamp default now()
+            filename text not null
         );""")
         conn.commit()
 
