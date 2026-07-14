@@ -541,14 +541,16 @@ def individual_tracker_data(room_id, slot):
     if room_id not in rooms:
         return jsonify({"error": "No archipelago game with this id"}), 404
 
-    state: ServerState = rooms[room_id]
+    with conn.cursor() as cur:
+        cur.execute("SELECT extract_folder_path, arch_file_path FROM rooms WHERE room_id = %s", (room_id,))
+        info = cur.fetchone()
 
-    if state.arch_file_path is None: 
-        return jsonify({"error": "no archipelago game loaded"}), 404
+        items, locations, hints = multidata.individual_player_data(info[0], info[1], room_id, slot)
 
-    items, locations, hints = multidata.individual_player_data(state, slot)
-    
-    return jsonify({"items": items, "locations": locations, "hints": hints, "name": state.slotinfos[slot]["name"]})
+        cur.execute("SELECT name FROM slots WHERE room_id = %s AND id = %s", (room_id, slot))
+        name = cur.fetchone()[0]
+        
+        return jsonify({"items": items, "locations": locations, "hints": hints, "name": name})
 
 """
 Gets every item received by every player
@@ -558,14 +560,13 @@ def sphere_items(room_id):
     if room_id not in rooms:
         return jsonify({"error": "No archipelago game with this id"}), 404
 
-    state: ServerState = rooms[room_id]
+    with conn.cursor() as cur:
+        cur.execute("SELECT extract_folder_path FROM rooms WHERE room_id = %s", (room_id,))
+        extract_folder_path = cur.fetchone()[0]
 
-    if state.arch_file_path is None: 
-        return jsonify({"error": "no archipelago game loaded"}), 404
-
-    items = multidata.sphere_data(state)
-    
-    return jsonify({"items": items})
+        items = multidata.sphere_data(extract_folder_path, conn, room_id)
+        
+        return jsonify({"items": items})
 
 
 """

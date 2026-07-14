@@ -127,32 +127,40 @@ def multitracker_data(arch_file_path, extract_folder_path, released_games, conn,
                                 else:
                                     player["status"] = 0
                         
+                        slot_hints = ([], [])
                         for player in decoded_apsave["hints"]: # player is (team#, slot#)
                             slot = player[1]
-                            slot_hints = []
                             for hint_info in decoded_apsave["hints"][player]:
-                                if hint_info.finding_player == slot: # no double ups. Must be finding player because location_info is keyed by location
-                                    slot_hints.append((room_id, int(slot), str(hint_info.location)))
-                                    
-                            with conn.cursor() as cur:
-                                cur.executemany("""SELECT location_name, to_name, from_name, item_name, game FROM locations 
-                                            WHERE room_id = %s AND slot = %s AND location_id = %s""", slot_hints, returning=True)
-                                loc_infos = [cur.fetchone() for _ in cur.results()]
+                                if hint_info.finding_player == slot: # no double ups
+                                    slot_hints[0].append((room_id, int(slot), str(hint_info.location)))
+                                    slot_hints[1].append((hint_info.entrance, hint_info.found, str(hint_info.location)))
+                        
+                        # Database doesn't store entrance or found, so line up both lists by location_id (extremely scuffed)
+                        extra_hint_info = sorted(slot_hints[1], key=lambda x: x[2])
 
-                                for loc_info in loc_infos:
-                                    hint = {}
-                                    hint["location"] = loc_info[0]
-                                    hint["receiving_player"] = loc_info[1]
-                                    hint["finding_player"] = loc_info[2]
-                                    hint["item"] = loc_info[3]
-                                    hint["game"] = loc_info[4]
-                                    if hint_info.entrance.strip():
-                                        hint["entrance"] = hint_info.entrance
-                                    else:
-                                        hint["entrance"] = "Vanilla"
-                                    hint["found"] = hint_info.found
+                        with conn.cursor() as cur:
+                            cur.executemany("""SELECT location_name, to_name, from_name, item_name, game, location_id FROM locations 
+                                        WHERE room_id = %s AND slot = %s AND location_id = %s""", slot_hints[0], returning=True)
+                            loc_infos = [cur.fetchone() for _ in cur.results()]
+                            loc_infos = sorted(loc_infos, key=lambda x: x[5])
 
-                                    hints.append(hint)
+                            for index in range(len(loc_infos)):
+                                loc_info = loc_infos[index]
+                                hint_info = extra_hint_info[index]
+
+                                hint = {}
+                                hint["location"] = loc_info[0]
+                                hint["receiving_player"] = loc_info[1]
+                                hint["finding_player"] = loc_info[2]
+                                hint["item"] = loc_info[3]
+                                hint["game"] = loc_info[4]
+                                if hint_info[0].strip():
+                                    hint["entrance"] = hint_info[0]
+                                else:
+                                    hint["entrance"] = "Vanilla"
+                                hint["found"] = hint_info[1]
+
+                                hints.append(hint)
                         
                         apsave = True
 
@@ -181,8 +189,8 @@ def multitracker_data(arch_file_path, extract_folder_path, released_games, conn,
 """
 Gets received items, locations, and hints for one player
 """
-def individual_player_data(state: ServerState, slot: int):
-    with open(state.arch_file_path, "rb") as f:
+def individual_player_data(extract_folder_path, arch_file_path, room_id, slot: int):
+    with open(arch_file_path, "rb") as f:
         data = f.read()
     
     decoded_arch = restricted_loads(zlib.decompress(data[1:]))
@@ -211,7 +219,7 @@ def individual_player_data(state: ServerState, slot: int):
         items[item_name]["last_order_received"] = count
         count+=1
 
-    with os.scandir(state.extract_folder_path) as folder:
+    with os.scandir(extract_folder_path) as folder:
         # Scan uploaded folder for apsave
         for file in folder:
             if file.is_file():
@@ -263,10 +271,10 @@ def individual_player_data(state: ServerState, slot: int):
 """
 Gets the info of every item received by all players 
 """
-def sphere_data(state: ServerState):
+def sphere_data(extract_folder_path, conn, room_id):
     items: list = []
 
-    with os.scandir(state.extract_folder_path) as folder:
+    with os.scandir(extract_folder_path) as folder:
         # Scans upload folder for apsave
         for file in folder:
             if file.is_file():
@@ -274,9 +282,25 @@ def sphere_data(state: ServerState):
                     with open(file.path, "rb") as f:
                         decoded_apsave = restricted_loads(zlib.decompress(f.read()))
 
-                        for key in decoded_apsave["location_checks"]: # key is (team#, slotid) tuple
-                            for location_id in decoded_apsave["location_checks"][key]:
-                                item = state.location_info[key[1]][location_id] # location_info dict has all relevant data already
+                        location_checks = []
+                        for player in decoded_apsave["location_checks"]: # player is (team#, slotid) tuple
+                            for location_id in decoded_apsave["location_checks"][player]:
+                                location_checks.append((room_id, int(player[1]), str(location_id)))
+
+                        with conn.cursor() as cur:
+                            cur.executemany("""SELECT sphere, from_name, to_name, location_name, item_name, game 
+                                            FROM locations WHERE room_id=%s AND slot=%s AND location_id = %s""", location_checks, returning=True)
+                            loc_infos = [cur.fetchone() for _ in cur.results()]
+
+                            for loc_info in loc_infos:
+                                item = {}
+                                item['sphere'] = loc_info[0]
+                                item['from'] = loc_info[1]
+                                item['to'] = loc_info[2]
+                                item['location_name'] = loc_info[3]
+                                item['item_name'] = loc_info[4]
+                                item['game'] = loc_info[5]
+
                                 items.append(item)
     
     return items

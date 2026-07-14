@@ -14,7 +14,7 @@ This project requires a Postgres database to store information about ongoing arc
 docker run --name postgres-database -p 5432:5432 -e POSTGRES_PASSWORD=mysecretpassword postgres
 ```
 
-This creates a docker container named `postgres-database` which is running a Postgres database server named `postgres`, with one user of username: `postgres` and password: `mysecretpassword`. This container needs to be running while the project is. 
+This creates a docker container named `postgres-database` which is running a Postgres database server named `postgres`, with one user of username: `postgres` and password: `mysecretpassword` (all of these can be changed, see the [documentation](https://hub.docker.com/_/postgres)). This container needs to be running while the project is. 
 
 Your database can also be created directly on your computer by installing Postgres [here](https://www.postgresql.org/download/). 
 
@@ -45,6 +45,8 @@ docker-compose up --build
 Then visit http://localhost:5173 to view the website. Note that logging in with Google will not work. 
 
 ### Run without Docker
+
+You'll need to add another line to your backend .env file: `DB_HOST=localhost`. 
 
 Once you have the .env files, go to the `backend` folder in your terminal and enter the following. If you wish to use a venv, activate it first. 
 
