@@ -20,7 +20,6 @@ from flask_pyoidc.flask_pyoidc import OIDCAuthentication # type: ignore
 from flask_pyoidc.provider_configuration import ProviderConfiguration, ClientMetadata # type: ignore
 sys.path.insert(0, "Archipelago-0.6.7")
 import multidata
-from server_state import ServerState
 from Utils import restricted_loads # type: ignore
 from dotenv import load_dotenv # type: ignore
 load_dotenv()

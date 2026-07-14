@@ -6,7 +6,6 @@ import os
 import zlib
 from datetime import datetime
 from Utils import restricted_loads # type: ignore
-from server_state import ServerState
 
 """
 Returns all of the players in the multiworld and relevant info
@@ -272,7 +271,6 @@ def individual_player_data(extract_folder_path, arch_file_path, room_id, slot: i
                                 cur.executemany("""SELECT location_name, to_name, from_name, item_name, game, location_id FROM locations 
                                     WHERE room_id = %s AND slot = %s AND location_id = %s""", slot_hints[0], returning=True)
                                 loc_infos = [cur.fetchone() for _ in cur.results()]
-                                # print(loc_infos)
                                 loc_infos = sorted(loc_infos, key=lambda x: x[5])
 
                                 for index in range(len(loc_infos)):
