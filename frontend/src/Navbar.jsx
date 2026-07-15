@@ -1,6 +1,6 @@
 import logo from "./assets/CSH Archipelago Logo.svg"
 
-export function Navbar({ user }) {
+export function Navbar({ user, full = true }) {
     return (
         <nav className="navbar navbar-expand-lg navbar-dark navbar-sticky bg-primary px-3 px-md-5 mb-4">
             <a className="navbar-brand" href="/">
@@ -20,22 +20,26 @@ export function Navbar({ user }) {
                         <a className="nav-link" href="https://github.com/Titanium-Lung/archipelago-csh">Github</a>
                     </li>
                 </ul>
-                <ul className="nav navbar-nav">
-                    <li className="nav-item navbar-user dropdown">
-                        <a className="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" id="user01">
-                        <img src={user?.picture_url} style={{ height: "40px", width: "auto", padding: "5px"}} className="rounded-circle"/>
-                        {user?.username}
-                        <span className="caret"></span>
-                        </a>
-                        <div className="dropdown-menu" aria-labelledby="user01">
-                            <a className="dropdown-item" href="https://github.com/Titanium-Lung/archipelago-csh/issues">Report an issue</a>
-                            <a className="dropdown-item" href={`https://profiles.csh.rit.edu/user/${user?.username}`}>Profile</a>
-                            <a className="dropdown-item" href="/settings">Settings</a>
-                            <div className="dropdown-divider"></div>
-                            <a className="dropdown-item" href={`${import.meta.env.VITE_BACKEND_URL}/logout`}>Logout</a>
-                        </div>
-                    </li>
-                </ul>
+                { 
+                    full && (
+                        <ul className="nav navbar-nav">
+                            <li className="nav-item navbar-user dropdown">
+                                <a className="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" id="user01">
+                                <img src={user?.picture_url} style={{ height: "40px", width: "auto", padding: "5px"}} className="rounded-circle"/>
+                                {user?.username}
+                                <span className="caret"></span>
+                                </a>
+                                <div className="dropdown-menu" aria-labelledby="user01">
+                                    <a className="dropdown-item" href="https://github.com/Titanium-Lung/archipelago-csh/issues">Report an issue</a>
+                                    <a className="dropdown-item" href={`https://profiles.csh.rit.edu/user/${user?.username}`}>Profile</a>
+                                    <a className="dropdown-item" href="/settings">Settings</a>
+                                    <div className="dropdown-divider"></div>
+                                    <a className="dropdown-item" href={`${import.meta.env.VITE_BACKEND_URL}/logout`}>Logout</a>
+                                </div>
+                            </li>
+                        </ul>
+                    )
+                }
             </div>
         </nav>
     )
