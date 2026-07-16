@@ -34,7 +34,7 @@ RETRY = int(os.environ.get('RETRY',
                        PORT_RANGE))
 
 DB_HOST = os.environ.get('DB_HOST',
-                         'host.docker.internal')
+                         'db')
 DB_NAME = os.environ.get('DB_NAME',
                          'postgres')
 DB_USER = os.environ.get('DB_USER',

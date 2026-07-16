@@ -8,27 +8,18 @@ First, choose with branch you want to run. The default branch is `dev`, but `mai
 
 ### Setup
 
-This project requires a Postgres database to store information about ongoing archipelago games. All you have to do is create a Postgres server; running the program will create the schema. The easiest way is using [Docker](https://hub.docker.com/_/postgres): 
+This project requires a [Postgres database](https://www.postgresql.org/download/) to store information about ongoing archipelago games. All you have to do is create a Postgres server; running the program will create the schema. **If you plan on running this project with Docker, you do not have to create your own database.** Docker will make the database for you.
 
-```
-docker run --name postgres-database -p 5432:5432 -e POSTGRES_PASSWORD=mysecretpassword postgres
-```
-
-This creates a docker container named `postgres-database` which is running a Postgres database server named `postgres`, with one user of username: `postgres` and password: `mysecretpassword` (all of these can be changed, see the [documentation](https://hub.docker.com/_/postgres)). This container needs to be running while the project is. 
-
-Your database can also be created directly on your computer by installing Postgres [here](https://www.postgresql.org/download/). 
-
-After creating your database, clone this project, then go into the `backend` folder and create a `.env` file. 
+Next, clone this project, then go into the `backend` folder and create a `.env` file. 
 
 This should contain: 
 
 ```
 OIDC_CLIENT_ID=client_id
 OIDC_CLIENT_SECRET=client_secret
-DB_PASS=mysecretpassword
 ```
 
-Reach out to an RTP (or this project's owner) for the client id and secret. DB_NAME and DB_USER can also be customised here; they are `postgres` by default.
+Reach out to an RTP (or this project's owner) for the client id and secret.
 
 In the `frontend` folder, create a `.env` file with: `VITE_BACKEND_URL=http://localhost:5001/api`. 
 
@@ -44,11 +35,21 @@ docker-compose up --build
 
 Then visit http://localhost:5173 to view the website. Note that logging in with Google will not work. 
 
+#### Accessing the Database
+
+While the project is running, you can access the database normally using your preferred method (such as through the terminal (using a tool such as [psql](https://www.postgresql.org/docs/current/app-psql.html)) or using an IDE (like [Datagrip](https://www.jetbrains.com/datagrip/))). 
+
+The host is `localhost`, the database name is `postgres`, and there is a default user with username `postgres` and password `mysecretpassword`. Example psql command to access the database:
+
+```
+psql -h localhost -p 5432 postgres postgres
+```
+
 ### Run without Docker
 
-You'll need to add another line to your backend .env file: `DB_HOST=localhost`. 
+You'll need to add another line to your backend .env file: `DB_HOST=localhost`. The default values for DB_USER, DB_NAME, and DB_PASS are postgres, postgres, and mysecretpassword respectively. These can be changed in your backend .env file. 
 
-Once you have the .env files, go to the `backend` folder in your terminal and enter the following. If you wish to use a venv, activate it first. 
+Once you have the .env files (and your database), go to the `backend` folder in your terminal and enter the following. If you wish to use a venv, activate it first. 
 
 ```
 pip install -r requirements.txt
