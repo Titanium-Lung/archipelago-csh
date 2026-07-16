@@ -1,10 +1,8 @@
 # CSH Archipelago
 
-An Archipelago hosting website for the Computer Science House
+An Archipelago hosting website for the [Computer Science House](https://csh.rit.edu)
 
 ## How to run
-
-First, choose with branch you want to run. The default branch is `dev`, but `main` is the most stable version. 
 
 ### Setup
 
@@ -69,7 +67,7 @@ Then visit http://localhost:5173 to view the website. Note that logging in with 
 
 ## Contributing
 
-To contribute to this project, first create a fork of this repo and clone it on your computer. Make changes and test locally, then create a Pull Request to the `dev` branch. 
+To contribute to this project, first create a fork of this repo and clone it on your computer. Make changes and test locally, then **create a Pull Request to the `dev` branch**. 
 
 ## Architecture
 
