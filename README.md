@@ -77,6 +77,8 @@ This project uses a React frontend to make calls to a Flask backend.
 
 The frontend takes in a zip file and sends it to the backend, which extracts it and stores it. As a subprocess, the backend runs MultiServer.py (in the Archipelago source code) using the .archipelago file contained in the zip to start up an archipelago server. All save data from the archipelago server is written by the Archipelago source to a .apsave file in the same directory as the .archipelago. The .apsave and .archipelago files are read by the backend to send information about the archipelago to the frontend. 
 
+The archipelago servers are managed using `process_manager`, run as a subprocess. The `app` accesses this using `process_manager_client`, which communicates with the process manager using TCP.
+
 ### Restarting the rooms
 
 All archipelago rooms that are stored are restarted when the program boots up, using the information saved in the database. 
