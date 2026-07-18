@@ -62,6 +62,30 @@ Default: PORT_RANGE
 
 How many times an archipelago server should try again when trying to find a port. 
 
+**DB_HOST**
+
+Default: db
+
+The location that the database is being hosted at.
+
+**DB_NAME**
+
+Default: postgres
+
+The name of the database.
+
+**DB_USER**
+
+Default: postgres
+
+The username of the user that connections to the database will use. 
+
+**DB_PASS**
+
+Default: mysecretpassword
+
+The password of the user that connections to the database will use.
+
 ## Frontend
 
 **VITE_BACKEND_URL**
