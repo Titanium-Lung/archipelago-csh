@@ -11,6 +11,7 @@ import time
 import uuid
 import random
 import shutil
+import psycopg # type: ignore
 import psycopg_pool # type: ignore
 import pytz # type: ignore 
 from datetime import datetime
@@ -58,7 +59,7 @@ DB_HOST = app.config['DB_HOST']
 DB_NAME = app.config['DB_NAME']
 DB_USER = app.config['DB_USER']
 DB_PASS = app.config['DB_PASS']
-pool = psycopg_pool.ConnectionPool(f"dbname={DB_NAME} user={DB_USER} password={DB_PASS} host={DB_HOST}", open=True)
+pool = psycopg_pool.ConnectionPool(f"dbname={DB_NAME} user={DB_USER} password={DB_PASS} host={DB_HOST}", open=False)
 
 # Only for local development
 process_manager = None
@@ -549,7 +550,7 @@ Starts up every archipelago server in the uploads folder
 def restart_all():
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-    with pool.connection() as conn:
+    with psycopg.connect(f"dbname={DB_NAME} user={DB_USER} password={DB_PASS} host={DB_HOST}") as conn: # Connection pool isn't open yet. Should be okay since it runs once at the start
         with conn.cursor() as cur:
             cur.execute("SELECT room_id, port, extract_folder_path, arch_file_path FROM rooms WHERE port >= %s AND port < %s", (SERVER_PORT, SERVER_PORT+PORT_RANGE))
             rooms_db = cur.fetchall()
@@ -649,6 +650,7 @@ atexit.register(pool.close)
 
 if __name__ == "__main__":
     with app.app_context(): # Only used for local development
+        pool.open()
         apply_migrations()
 
         process_manager = subprocess.Popen(["python3", "process_manager.py"])
