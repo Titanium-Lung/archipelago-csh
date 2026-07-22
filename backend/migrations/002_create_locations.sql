@@ -13,5 +13,5 @@ create table locations
             references rooms
             on delete cascade,
     constraint locations_pk
-        primary key (slot, location_id, room_id)
+        primary key (room_id, slot, location_id)
 );

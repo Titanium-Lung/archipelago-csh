@@ -201,12 +201,13 @@ def upload_file():
     with pool.connection() as conn:
         with conn.cursor() as cur:
             cur.execute("INSERT INTO rooms VALUES (%s, %s, %s, %s, %s, %s, %s)", 
-                        (room_id, try_port, admin, extract_folder_path, arch_file_path, False, start))
+                        (room_id, port, admin, extract_folder_path, arch_file_path, False, start))
 
             with cur.copy("COPY locations (slot, location_id, sphere, from_name, game, to_name, location_name, item_name, room_id) FROM STDIN") as copy:
                 for location in locations:
                     copy.write_row(location)
             
+            # TODO simplify double loops into one
             slots = []
             for slot in slotinfos:
                 slots.append((slot, slotinfos[slot]['name'], slotinfos[slot]['game'], room_id))
@@ -519,10 +520,7 @@ def individual_tracker_data(room_id, slot):
             cur.execute("SELECT extract_folder_path, arch_file_path FROM rooms WHERE room_id = %s", (room_id,))
             info = cur.fetchone()
 
-            items, locations, hints = multidata.individual_player_data(info[0], info[1], room_id, slot, conn)
-
-            cur.execute("SELECT name FROM slots WHERE room_id = %s AND id = %s", (room_id, slot))
-            name = cur.fetchone()[0]
+            items, locations, hints, name = multidata.individual_player_data(info[0], info[1], room_id, slot, conn)
             
             return jsonify({"items": items, "locations": locations, "hints": hints, "name": name})
 
@@ -586,7 +584,8 @@ def restart_all():
 
                 start_server(room_id, args)
 
-                cur.execute("UPDATE rooms SET port = %s WHERE room_id = %s", (port, room_id))
+                if room[1] != port:
+                    cur.execute("UPDATE rooms SET port = %s WHERE room_id = %s", (port, room_id))
 
         conn.commit()
 

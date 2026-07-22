@@ -121,7 +121,6 @@ Terminates every room
 def terminate_all():
     for room_id in processes:
         if processes[room_id] is not None:
-            print(f"Shutting down Archipelago Server with id {room_id}...")
             processes[room_id].terminate()
             processes[room_id].wait()
 

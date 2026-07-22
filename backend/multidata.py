@@ -134,16 +134,19 @@ def multitracker_data(arch_file_path, extract_folder_path, released_games, conn,
                                     slot_hints[0].append((room_id, int(slot), str(hint_info.location)))
                                     slot_hints[1].append((hint_info.entrance, hint_info.found, str(hint_info.location)))
                         
-                        # Database doesn't store entrance or found, so line up both lists by location_id (extremely scuffed)
-                        extra_hint_info = sorted(slot_hints[1], key=lambda x: x[2])
+                        # Database doesn't store entrance or found
+                        extra_hint_info = slot_hints[1]
 
                         with conn.cursor() as cur:
                             cur.executemany("""SELECT location_name, to_name, from_name, item_name, game, location_id FROM locations 
                                         WHERE room_id = %s AND slot = %s AND location_id = %s""", slot_hints[0], returning=True)
-                            loc_infos = [cur.fetchone() for _ in cur.results()]
-                            loc_infos = sorted(loc_infos, key=lambda x: x[5])
+                            loc_infos = []
+                            loc_len = 0
+                            for result in cur.results():
+                                loc_infos.append(cur.fetchone())
+                                loc_len+=1
 
-                            for index in range(len(loc_infos)):
+                            for index in range(loc_len):
                                 loc_info = loc_infos[index]
                                 hint_info = extra_hint_info[index]
 
@@ -197,6 +200,7 @@ def individual_player_data(extract_folder_path, arch_file_path, room_id, slot: i
     items: dict = {} # dict for add or update
     locations: list = []
     hints: list = []
+    name: str = ""
 
     with conn.cursor() as cur:
         # Get all the locations ahead of time no matter whether there's an apsave
@@ -210,13 +214,14 @@ def individual_player_data(extract_folder_path, arch_file_path, room_id, slot: i
             location["number"] = location_info[1]
             locations.append(location)
 
-        cur.execute("""SELECT i.id, i.name FROM items as i, slots as s
+        cur.execute("""SELECT i.id, i.name, s.name FROM items as i, slots as s
                     WHERE i.room_id = %s AND s.room_id = i.room_id AND s.id = %s AND i.game = s.game""", (room_id, slot))
         items_db = cur.fetchall()
         item_infos = {}
         for item_info in items_db:
             item_infos[item_info[0]] = {}
             item_infos[item_info[0]]['name'] = item_info[1]
+            name = item_info[2]
 
         count = 1 # Tracks order of received items
         for item in decoded_arch["precollected_items"][slot]:
@@ -265,15 +270,18 @@ def individual_player_data(extract_folder_path, arch_file_path, room_id, slot: i
                                     slot_hints[0].append((room_id, int(hint_info.finding_player), str(hint_info.location)))
                                     slot_hints[1].append((hint_info.entrance, hint_info.found, str(hint_info.location)))
 
-                                # Database doesn't store entrance or found, so line up both lists by location_id (extremely scuffed)
-                                extra_hint_info = sorted(slot_hints[1], key=lambda x: x[2])
+                                # Database doesn't store entrance or found
+                                extra_hint_info = slot_hints[1]
 
                                 cur.executemany("""SELECT location_name, to_name, from_name, item_name, game, location_id FROM locations 
                                     WHERE room_id = %s AND slot = %s AND location_id = %s""", slot_hints[0], returning=True)
-                                loc_infos = [cur.fetchone() for _ in cur.results()]
-                                loc_infos = sorted(loc_infos, key=lambda x: x[5])
+                                loc_infos = []
+                                loc_len = 0
+                                for result in cur.results():
+                                    loc_infos.append(cur.fetchone())
+                                    loc_len+=1
 
-                                for index in range(len(loc_infos)):
+                                for index in range(loc_len):
                                     loc_info = loc_infos[index]
                                     hint_info = extra_hint_info[index]
                                 
@@ -291,7 +299,7 @@ def individual_player_data(extract_folder_path, arch_file_path, room_id, slot: i
 
                                     hints.append(hint)
         
-        return items, locations, hints
+        return items, locations, hints, name
 
 """
 Gets the info of every item received by all players 
