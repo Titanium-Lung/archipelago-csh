@@ -147,6 +147,8 @@ def upload_file():
     file.save(zip_save_path)
 
     room_id = str(uuid.uuid4())
+    admin = session.get('userinfo').get('uuid')
+    start = datetime.now()
 
     filename = None
 
@@ -175,55 +177,39 @@ def upload_file():
             ids[game] = {}
             ids[game]['id_to_item_name'] = {v: k for k, v in subdict['item_name_to_id'].items()}
             ids[game]['id_to_location_name'] = {v: k for k, v in subdict['location_name_to_id'].items()}
-        
-        # Also build a list of every location and all the info about it to be inserted into the database
-        # Also the name and game of every slot
-        locations = []
-        slotinfos = {}
-        sphere_num = 1
-        for sphere in decoded_arch["spheres"]:
-            for slot in sphere:
-                slotinfo = decoded_arch["slot_info"][slot]
-                slotinfos[slot] = {"name": slotinfo.name, "game": slotinfo.game}
-                for location_id in sphere[slot]:
-                    location_tuple = decoded_arch["locations"][slot][location_id] # format is: (item_id, receiver_slot_id, unknown#)
-
-                    to_name = decoded_arch["slot_info"][location_tuple[1]].name
-                    location_name = ids[slotinfo.game]['id_to_location_name'][location_id]
-                    item_name = ids[decoded_arch["slot_info"][location_tuple[1]].game]['id_to_item_name'][location_tuple[0]]
-
-                    locations.append((slot, location_id, sphere_num, slotinfo.name, slotinfo.game, to_name, location_name, item_name, room_id))
-            sphere_num+=1
-
-    admin = session.get('userinfo').get('uuid')
-    start = datetime.now()
     
-    with pool.connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute("INSERT INTO rooms VALUES (%s, %s, %s, %s, %s, %s, %s)", 
-                        (room_id, port, admin, extract_folder_path, arch_file_path, False, start))
+        with pool.connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("INSERT INTO rooms VALUES (%s, %s, %s, %s, %s, %s, %s)", 
+                            (room_id, port, admin, extract_folder_path, arch_file_path, False, start))
 
-            with cur.copy("COPY locations (slot, location_id, sphere, from_name, game, to_name, location_name, item_name, room_id) FROM STDIN") as copy:
-                for location in locations:
-                    copy.write_row(location)
-            
-            # TODO simplify double loops into one
-            slots = []
-            for slot in slotinfos:
-                slots.append((slot, slotinfos[slot]['name'], slotinfos[slot]['game'], room_id))
-            
-            with cur.copy("COPY slots (id, name, game, room_id) FROM STDIN") as copy:
-                for slot in slots:
-                    copy.write_row(slot)
-            
-            items = []
-            for game in ids:
-                for item_id in ids[game]['id_to_item_name']:
-                    items.append((game, ids[game]['id_to_item_name'][item_id], item_id, room_id))
-            
-            with cur.copy("COPY items (game, name, id, room_id) FROM STDIN") as copy:
-                for item in items:
-                    copy.write_row(item)
+                # Build a list of every location and all the info about it to be inserted into the database
+                # Also the name and game of every slot
+                slotinfos = {}
+                with cur.copy("COPY locations (slot, location_id, sphere, from_name, game, to_name, location_name, item_name, room_id) FROM STDIN") as copy:
+                    sphere_num = 1
+                    for sphere in decoded_arch["spheres"]:
+                        for slot in sphere:
+                            slotinfo = decoded_arch["slot_info"][slot]
+                            slotinfos[slot] = {"name": slotinfo.name, "game": slotinfo.game}
+                            for location_id in sphere[slot]:
+                                location_tuple = decoded_arch["locations"][slot][location_id] # format is: (item_id, receiver_slot_id, unknown#)
+
+                                to_name = decoded_arch["slot_info"][location_tuple[1]].name
+                                location_name = ids[slotinfo.game]['id_to_location_name'][location_id]
+                                item_name = ids[decoded_arch["slot_info"][location_tuple[1]].game]['id_to_item_name'][location_tuple[0]]
+
+                                copy.write_row((slot, location_id, sphere_num, slotinfo.name, slotinfo.game, to_name, location_name, item_name, room_id))
+                        sphere_num+=1
+                
+                with cur.copy("COPY slots (id, name, game, room_id) FROM STDIN") as copy:
+                    for slot in slotinfos:
+                        copy.write_row((slot, slotinfos[slot]['name'], slotinfos[slot]['game'], room_id))
+
+                with cur.copy("COPY items (game, name, id, room_id) FROM STDIN") as copy:
+                    for game in ids:
+                        for item_id in ids[game]['id_to_item_name']:
+                            copy.write_row((game, ids[game]['id_to_item_name'][item_id], item_id, room_id))
         
         args = {"arch_file_path": arch_file_path, "port": port, "extract_folder_path": extract_folder_path}
 
