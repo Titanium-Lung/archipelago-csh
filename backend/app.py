@@ -1,3 +1,5 @@
+from gevent import monkey # type: ignore
+monkey.patch_all()
 from flask import Flask, request, jsonify, send_file, redirect, session, Blueprint, stream_with_context, Response # type: ignore
 from flask_cors import CORS # type: ignore
 import os
@@ -602,7 +604,6 @@ def stream_log(filepath):
         while True:
             line = f.readline()
             if line:
-                # print(f"data: {line.rstrip()}\n\n")
                 yield f"data: {line.rstrip()}\n\n"
             else:
                 time.sleep(0.5)
