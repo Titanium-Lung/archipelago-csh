@@ -62,10 +62,21 @@ function Room() {
                 }
             }
         }
+        
+        // Get the full entire log, and then stream new lines that are added
+        fetchLog()
 
-        // Every 2 seconds, fetch the log 
-        const interval = setInterval(fetchLog, 2000)
-        return () => clearInterval(interval)
+        const eventSource = new EventSource(`${import.meta.env.VITE_BACKEND_URL}/log/stream/${roomId}`)
+
+        eventSource.onmessage = (event) => {
+            setLog(prev => [...prev, event.data])
+        }
+
+        eventSource.onerror = () => {
+            eventSource.close()
+        }
+
+        return () => eventSource.close()
     }, [])
 
     useEffect(() => {
