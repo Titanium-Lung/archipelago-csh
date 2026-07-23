@@ -47,6 +47,8 @@ function Home() {
             const formData = new FormData()
             formData.append("file", file)
 
+            setMessage("Uploading...")
+
             const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/upload`, {
                 method: "POST",
                 body: formData,
