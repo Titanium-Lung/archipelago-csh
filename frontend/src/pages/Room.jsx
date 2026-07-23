@@ -9,6 +9,7 @@ function Room() {
     const navigate = useNavigate()
     const bottomRef = useRef(null)
     const [initialFetch, setInitialFetch] = useState(true)
+    const [wasAtBottom, setWasAtBottom] = useState(true)
     const user = useUser()
 
     const [port, setPort] = useState("")
@@ -62,10 +63,25 @@ function Room() {
                 }
             }
         }
+        
+        // Get the full entire log, and then stream new lines that are added
+        fetchLog()
 
-        // Every 2 seconds, fetch the log 
-        const interval = setInterval(fetchLog, 2000)
-        return () => clearInterval(interval)
+        const eventSource = new EventSource(`${import.meta.env.VITE_BACKEND_URL}/log/stream/${roomId}`)
+
+        eventSource.onmessage = (event) => {
+            const logBox = bottomRef.current
+            if (logBox) {
+                setWasAtBottom(logBox.scrollHeight - logBox.scrollTop <= logBox.clientHeight + 60)
+            }
+            setLog(prev => [...prev, event.data])
+        }
+
+        eventSource.onerror = () => {
+            eventSource.close()
+        }
+
+        return () => eventSource.close()
     }, [])
 
     useEffect(() => {
@@ -90,15 +106,13 @@ function Room() {
         }
     }, [initialFetch])
 
-    // Autoscroll the log when it's updated 
+    // Autoscroll the log when it's updated if the user was at the bottom before the new lines came in
     useEffect(() => {
         setTimeout(() => {
             const logBox = bottomRef.current
             if (!logBox) return
-
-            const isAtBottom = logBox.scrollHeight - logBox.scrollTop <= logBox.clientHeight + 60
             
-            if (isAtBottom) {
+            if (wasAtBottom) {
                 logBox.scrollTop = logBox.scrollHeight
             }
         }, 0)
