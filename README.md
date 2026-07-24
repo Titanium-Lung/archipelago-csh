@@ -23,6 +23,8 @@ In the `frontend` folder, create a `.env` file with: `VITE_BACKEND_URL=http://lo
 
 This URL can be changed if you prefer, but the backend Dockerfile and docker-compose.yml have port 5001 exposed. 
 
+For more information about env values, refer to the [Environment Variables Readme](https://github.com/Titanium-Lung/archipelago-csh/blob/dev/Documentation/Environment%20Variables.md).
+
 ### Run with Docker
 
 Once you have the .env files, go to the root of the project in your terminal and enter: 
@@ -76,6 +78,8 @@ This project uses a React frontend to make calls to a Flask backend.
 The frontend takes in a zip file and sends it to the backend, which extracts it and stores it. As a subprocess, the backend runs MultiServer.py (in the Archipelago source code) using the .archipelago file contained in the zip to start up an archipelago server. All save data from the archipelago server is written by the Archipelago source to a .apsave file in the same directory as the .archipelago. The .apsave and .archipelago files are read by the backend to send information about the archipelago to the frontend. 
 
 The archipelago servers are managed using `process_manager`, run as a subprocess. The `app` accesses this using `process_manager_client`, which communicates with the process manager using TCP.
+
+For more information (in the form of diagrams!), refer to the [Documentation Folder](https://github.com/Titanium-Lung/archipelago-csh/tree/dev/Documentation).
 
 ### Restarting the rooms
 
