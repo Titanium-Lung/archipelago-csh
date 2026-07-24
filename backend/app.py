@@ -1,3 +1,5 @@
+from gevent import monkey
+monkey.patch_all()
 from flask import Flask, request, jsonify, send_file, redirect, session, Blueprint
 from flask_cors import CORS
 import os
