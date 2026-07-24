@@ -1,3 +1,6 @@
+from gevent import monkey
+monkey.patch_all()
+
 import subprocess
 import time
 from app import restart_all, pool

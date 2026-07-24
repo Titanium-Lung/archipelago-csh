@@ -4,6 +4,7 @@ Client that Flask workers use to communicate with the process_manager subprocess
 
 import socket
 import json
+import time
 
 HOST = "localhost"
 PORT = 6000
@@ -11,12 +12,19 @@ PORT = 6000
 """
 Sends a message through TCP to the listening process_manager subprocess
 """
-def send_message(message):
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.connect((HOST, PORT))
-        s.sendall(json.dumps(message).encode())
-        response = s.recv(4096).decode()
-        return json.loads(response)
+def send_message(message, retries=5):
+    for attempt in range(retries):
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.connect((HOST, PORT))
+                s.sendall(json.dumps(message).encode())
+                response = s.recv(4096).decode()
+                return json.loads(response)
+        except ConnectionRefusedError:
+            if attempt < retries-1:
+                time.sleep(1)
+            else:
+                raise
 
 def start_server(room_id, args):
     return send_message({"action": "start", "room_id": room_id, "args": args})
