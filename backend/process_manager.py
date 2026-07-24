@@ -8,6 +8,7 @@ import subprocess
 import socket
 import threading
 import time
+from datetime import datetime
 from app import UPLOAD_FOLDER, ARCHIPELAGO_SERVER, SHUTDOWN_TIME
 
 HOST = "localhost"
@@ -130,7 +131,8 @@ Writes the stdout of a process to a file
 def write_log(process, filepath, room_id):
     with open(filepath, "a") as f:
         for line in process.stdout:
-            f.write(line.decode())
+            nowstr = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            f.write(f"[{nowstr}] {line.decode()}")
             f.flush()
 
         if room_id in processes:
