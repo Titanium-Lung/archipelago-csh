@@ -6,8 +6,6 @@ from process_manager_client import terminate_all
 # Gunicorn configuration variables
 workers = 3
 bind = "0.0.0.0:5001"
-worker_class = "gevent"
-# control_socket_disable = True
 
 process_manager = None
 

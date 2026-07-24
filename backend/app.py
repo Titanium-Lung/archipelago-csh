@@ -1,7 +1,5 @@
-from gevent import monkey # type: ignore
-monkey.patch_all()
-from flask import Flask, request, jsonify, send_file, redirect, session, Blueprint, stream_with_context, Response # type: ignore
-from flask_cors import CORS # type: ignore
+from flask import Flask, request, jsonify, send_file, redirect, session, Blueprint
+from flask_cors import CORS
 import os
 import subprocess
 import atexit
@@ -386,27 +384,6 @@ def stream_log(room_id):
             return jsonify(result)
 
 """
-Set up a stream that sends new lines in the log to the frontend
-"""
-@api.route("/log/stream/<room_id>")
-def get_log_stream(room_id):
-    if not exists(room_id).get("exists"):
-        return jsonify({"error": "No archipelago game with this id"}), 404
-    
-    with pool.connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT extract_folder_path FROM rooms WHERE room_id = %s", (room_id,))
-            extract_folder_path = cur.fetchone()[0]
-
-            logpath = f"{extract_folder_path}/server-log.txt"
-
-            return Response(
-                stream_with_context(stream_log(logpath)),
-                mimetype="text/event-stream",
-                headers={"X-Accel-Buffering": "no"}
-            )
-
-"""
 Get the port and admin of the specified room
 """
 @api.route("/room/<room_id>")
@@ -598,15 +575,6 @@ def restart_all():
 
         conn.commit()
 
-def stream_log(filepath):
-    with open(filepath, "r") as f:
-        f.seek(0, 2)
-        while True:
-            line = f.readline()
-            if line:
-                yield f"data: {line.rstrip()}\n\n"
-            else:
-                time.sleep(0.5)
 
 """
 Check if certain port is free for 10 seconds
