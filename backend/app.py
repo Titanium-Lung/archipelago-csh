@@ -1,7 +1,7 @@
-from gevent import monkey
+from gevent import monkey # type: ignore
 monkey.patch_all()
-from flask import Flask, request, jsonify, send_file, redirect, session, Blueprint
-from flask_cors import CORS
+from flask import Flask, request, jsonify, send_file, redirect, session, Blueprint # type: ignore
+from flask_cors import CORS # type: ignore
 import os
 import subprocess
 import atexit
