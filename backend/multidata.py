@@ -27,12 +27,19 @@ def get_players(arch_file_path, extract_folder_path):
             if file.is_file():
                 if "P" in file.name[2:]:
                     try:
-                        # Looks for the structure of the name of the patch file (not perfect)
+                        # Looks for the structure of the name of the patch file
                         first = file.name.index("P")
                         second = file.name.index("P", first+1)
-                        end = file.name.index('_', second+1)
+
+                        patch_id_str = ""
+                        for letter in file.name[second+1:]:
+                            try:
+                                int(letter)
+                                patch_id_str += letter
+                            except ValueError:
+                                break
                     
-                        patch_id = int(file.name[second+1:end])
+                        patch_id = int(patch_id_str)
                         for player in players:
                             if player['slot'] == patch_id:
                                 player['patch'] = file.name

@@ -1,5 +1,5 @@
 from gevent import monkey # type: ignore
-monkey.patch_all()
+monkey.patch_all() 
 from flask import Flask, request, jsonify, send_file, redirect, session, Blueprint, Response, stream_with_context # type: ignore
 from flask_cors import CORS # type: ignore
 import os
@@ -13,9 +13,9 @@ import time
 import uuid
 import random
 import shutil
-import psycopg # type: ignore
-import psycopg_pool # type: ignore
-import pytz # type: ignore 
+import psycopg
+import psycopg_pool
+import pytz
 from datetime import datetime
 from babel.dates import format_datetime # type: ignore
 from flask_pyoidc.flask_pyoidc import OIDCAuthentication # type: ignore

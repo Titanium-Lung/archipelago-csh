@@ -162,6 +162,7 @@ frontend/dist/
 
 # Backend
 backend/venv/
+.venv/
 backend/uploads/
 backend/__pycache__/
 *.pyc
