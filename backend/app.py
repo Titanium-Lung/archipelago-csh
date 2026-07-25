@@ -533,6 +533,23 @@ def individual_tracker_data(room_id, slot):
             
             return jsonify({"items": items, "locations": locations, "hints": hints, "name": name})
 
+
+@api.route("/assign/<room_id>/<int:slot>", methods=["PUT"])
+def assign_to_slot(room_id, slot):
+    if not exists(room_id).get("exists"):
+        return jsonify({"error": "No archipelago game with this id"}), 404
+
+    if 'userinfo' not in session:
+        return jsonify({"error": "User is not logged in"}), 403
+
+    with pool.connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE slots SET player_uuid = %s WHERE room_id = %s AND id = %s", (session.get('userinfo').get('uuid'), room_id, slot))
+
+        conn.commit()
+
+    return jsonify({"message": "Sucessfully assigned"})
+
 """
 Gets every item received by every player
 """

@@ -73,6 +73,19 @@ function Tracker() {
         fetchItems()
     }, [])
 
+    async function assignToSlot() {
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/assign/${roomId}/${slot}`, {
+            method: "PUT",
+            credentials: "include"
+        })
+
+        const result = await response.json()
+
+        if (!response.ok) {
+            console.log(result.error)
+        }
+    }
+
     // Put sort consts into localstorage
     
     useEffect(() => {
@@ -209,6 +222,7 @@ function Tracker() {
             <Navbar user={user}></Navbar>
             <div className="mx-md-5">
                 <button className="btn btn-primary" onClick={sendToMultiTracker}>Back to Multiworld Tracker</button>
+                <button className="btn btn-success" onClick={assignToSlot}>Assign</button>
             </div>
             <h1 className="text-center">Individual Tracker</h1>
             <div className="mx-md-5 m-3">
