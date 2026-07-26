@@ -533,7 +533,9 @@ def individual_tracker_data(room_id, slot):
             
             return jsonify({"items": items, "locations": locations, "hints": hints, "name": name})
 
-
+"""
+Assigns the current logged in user to the requested slot
+"""
 @api.route("/assign/<room_id>/<int:slot>", methods=["PUT"])
 def assign_to_slot(room_id, slot):
     if not exists(room_id).get("exists"):
@@ -566,6 +568,28 @@ def sphere_items(room_id):
             items = multidata.sphere_data(extract_folder_path, conn, room_id)
             
             return jsonify({"items": items})
+
+@api.route("/history")
+def get_history():
+    if 'userinfo' not in session:
+        return jsonify({"error": "User is not logged in"}), 403
+
+    uuid = session.get('userinfo').get('uuid')
+
+    with pool.connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT name, game, checks FROM slots WHERE player_uuid = %s", (uuid,))
+            slots_db = cur.fetchall()
+
+            slots = []
+            for slot_info in slots_db:
+                slot = {}
+                slot['name'] = slot_info[0]
+                slot['game'] = slot_info[1]
+                slot['checks'] = slot_info[2]
+                slots.append(slot)
+
+            return jsonify({"slots": slots})
 
 
 """

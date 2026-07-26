@@ -6,6 +6,24 @@ function Settings() {
     const user = useUser()
     
     const [theme, setTheme] = useState(localStorage.getItem("theme") || "auto")
+    const [slots, setSlots] = useState([])
+
+    useEffect(() => {
+        async function fetchSlots() {
+            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/history`, {
+                method: "GET",
+                credentials: "include"
+            })
+
+            const result = await response.json()
+
+            if (response.ok) {
+                setSlots(result.slots)
+            }
+        }
+
+        fetchSlots()
+    }, [])
 
     useEffect(() => {
         const html = document.documentElement
@@ -22,7 +40,7 @@ function Settings() {
         <div>
             <title>Settings</title>
             <Navbar user={user}></Navbar>
-            <div className="text-center">
+            <div className="text-center mb-3">
                 <h1>Settings</h1>
                 <h2>Theme</h2>
                 <div className="d-flex gap-3 justify-content-center">
@@ -31,7 +49,26 @@ function Settings() {
                     <button className="btn btn-dark" onClick={() => setTheme("dark")}>Dark mode</button>
                 </div>
             </div>
-            
+            <div className="d-flex justify-content-center mx-md-5">
+                <table className="table table-bordered table-hover">
+                    <thead>
+                        <tr className="table table-primary">
+                            <th>Name</th>
+                            <th>Game</th>
+                            <th>Checks</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {slots.map((slot, index) => (
+                            <tr key={index}>
+                                <td>{slot.name}</td>
+                                <td>{slot.game}</td>
+                                <td>{slot.checks}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
         </div>
     )
 }
