@@ -534,7 +534,7 @@ def individual_tracker_data(room_id, slot):
             return jsonify({"items": items, "locations": locations, "hints": hints, "name": name, "uuid": player_uuid})
 
 """
-Assigns the current logged in user to the requested slot
+Assigns (or unassigns) the current logged in user to the requested slot
 """
 @api.route("/assign/<room_id>/<int:slot>", methods=["PUT", "DELETE"])
 def assign_to_slot(room_id, slot):
@@ -553,13 +553,13 @@ def assign_to_slot(room_id, slot):
     with pool.connection() as conn:
         with conn.cursor() as cur:
             if request.method == 'PUT':
-                cur.execute("UPDATE slots SET player_uuid = %s WHERE room_id = %s AND id = %s", (uuid, room_id, slot))
+                cur.execute("UPDATE slots SET player_uuid = %s WHERE id = %s AND room_id = %s", (uuid, slot, room_id))
 
                 conn.commit()
 
                 return jsonify({"message": "Successfully assigned"})
             elif request.method == 'DELETE':
-                cur.execute("UPDATE slots SET player_uuid = %s WHERE room_id = %s AND id = %s", (None, room_id, slot))
+                cur.execute("UPDATE slots SET player_uuid = %s WHERE id = %s AND room_id = %s", (None, slot, room_id))
 
                 conn.commit()
 

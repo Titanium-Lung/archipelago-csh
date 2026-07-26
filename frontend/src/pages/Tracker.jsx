@@ -259,6 +259,7 @@ function Tracker() {
                 }
             </div>
             <h1 className="text-center">Individual Tracker</h1>
+            <p className="text-center">Reload this page to update how many checks you've gotten</p>
             <div className="mx-md-5 m-3">
                 <input type="text" id="input" name="search" placeholder="Search" value={itemFilter} onChange={e => setItemFilter(e.target.value)} />
                 <button className="btn btn-primary" onClick={() => collapseItems ? setCollapseItems(false) : setCollapseItems(true)} style={{ marginLeft: '10px' }}>Collapse</button>
