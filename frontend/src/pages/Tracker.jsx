@@ -14,6 +14,8 @@ function Tracker() {
     const [hints, setHints] = useState([])
     const [locations, setLocations] = useState([])
 
+    const [assignedUUID, setAssigned] = useState(null)
+
     // Consts for sorting tables
     const [itemsSortedColumn, setItemsSortedColumn] = useState(localStorage.getItem("itemsSortedColumn") || null)
     const [itemsSortDirection, setItemsSortDirection] = useState(localStorage.getItem("itemsSortDirection") || null)
@@ -68,23 +70,11 @@ function Tracker() {
                 setFilteredLocations(result.locations)
 
                 setSlotName(result.name)
+                setAssigned(result.uuid)
             }
         }
         fetchItems()
     }, [])
-
-    async function assignToSlot() {
-        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/assign/${roomId}/${slot}`, {
-            method: "PUT",
-            credentials: "include"
-        })
-
-        const result = await response.json()
-
-        if (!response.ok) {
-            console.log(result.error)
-        }
-    }
 
     // Put sort consts into localstorage
     
@@ -167,6 +157,36 @@ function Tracker() {
         setFilteredHints(filteredItems)
     }, [filterHints])
 
+    async function assignToSlot() {
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/assign/${roomId}/${slot}`, {
+            method: "PUT",
+            credentials: "include"
+        })
+
+        const result = await response.json()
+
+        if (response.ok) {
+            setAssigned(user?.uuid)
+        } else {
+            console.log(result.error)
+        }
+    }
+
+    async function unassignSlot() {
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/assign/${roomId}/${slot}`, {
+            method: "DELETE",
+            credentials: "include"
+        })
+
+        const result = await response.json()
+
+        if (response.ok) {
+            setAssigned(null)
+        } else {
+            console.log(result.error)
+        }
+    }
+
     function sendToMultiTracker() {
         navigate(`/multitracker/${roomId}`)
     }
@@ -220,9 +240,23 @@ function Tracker() {
         <div>
             <title>{`${slotName}'s Tracker`}</title>
             <Navbar user={user}></Navbar>
-            <div className="mx-md-5">
+            <div className="d-flex gap-2 mx-md-5">
                 <button className="btn btn-primary" onClick={sendToMultiTracker}>Back to Multiworld Tracker</button>
-                <button className="btn btn-success" onClick={assignToSlot}>Assign</button>
+                {
+                    assignedUUID === user?.uuid ? (
+                        <button className="btn btn-danger" onClick={unassignSlot}>Unassign</button>
+                    ) : (
+                        <div>
+                        {
+                            assignedUUID === null ? (
+                                <button className="btn btn-success" onClick={assignToSlot}>Assign</button>
+                            ) : (
+                                <button className="btn btn-success disabled">Can't assign</button>
+                            )
+                        }
+                        </div>
+                    )
+                }
             </div>
             <h1 className="text-center">Individual Tracker</h1>
             <div className="mx-md-5 m-3">

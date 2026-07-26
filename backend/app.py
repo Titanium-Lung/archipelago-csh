@@ -529,14 +529,14 @@ def individual_tracker_data(room_id, slot):
             cur.execute("SELECT extract_folder_path, arch_file_path FROM rooms WHERE room_id = %s", (room_id,))
             info = cur.fetchone()
 
-            items, locations, hints, name = multidata.individual_player_data(info[0], info[1], room_id, slot, conn)
+            items, locations, hints, name, player_uuid = multidata.individual_player_data(info[0], info[1], room_id, slot, conn)
             
-            return jsonify({"items": items, "locations": locations, "hints": hints, "name": name})
+            return jsonify({"items": items, "locations": locations, "hints": hints, "name": name, "uuid": player_uuid})
 
 """
 Assigns the current logged in user to the requested slot
 """
-@api.route("/assign/<room_id>/<int:slot>", methods=["PUT"])
+@api.route("/assign/<room_id>/<int:slot>", methods=["PUT", "DELETE"])
 def assign_to_slot(room_id, slot):
     if not exists(room_id).get("exists"):
         return jsonify({"error": "No archipelago game with this id"}), 404
@@ -544,13 +544,26 @@ def assign_to_slot(room_id, slot):
     if 'userinfo' not in session:
         return jsonify({"error": "User is not logged in"}), 403
 
+    uuid = None
+    if session.get('userinfo').get('preferred_username'):
+        uuid = session.get('userinfo').get('uuid')
+    else:
+        uuid = session.get('userinfo').get('sub')
+    
     with pool.connection() as conn:
         with conn.cursor() as cur:
-            cur.execute("UPDATE slots SET player_uuid = %s WHERE room_id = %s AND id = %s", (session.get('userinfo').get('uuid'), room_id, slot))
+            if request.method == 'PUT':
+                cur.execute("UPDATE slots SET player_uuid = %s WHERE room_id = %s AND id = %s", (uuid, room_id, slot))
 
-        conn.commit()
+                conn.commit()
 
-    return jsonify({"message": "Sucessfully assigned"})
+                return jsonify({"message": "Successfully assigned"})
+            elif request.method == 'DELETE':
+                cur.execute("UPDATE slots SET player_uuid = %s WHERE room_id = %s AND id = %s", (None, room_id, slot))
+
+                conn.commit()
+
+                return jsonify({"message": "Sucecssfully UNassigned"})
 
 """
 Gets every item received by every player
@@ -574,7 +587,11 @@ def get_history():
     if 'userinfo' not in session:
         return jsonify({"error": "User is not logged in"}), 403
 
-    uuid = session.get('userinfo').get('uuid')
+    uuid = None
+    if session.get('userinfo').get('preferred_username'):
+        uuid = session.get('userinfo').get('uuid')
+    else:
+        uuid = session.get('userinfo').get('sub')
 
     with pool.connection() as conn:
         with conn.cursor() as cur:

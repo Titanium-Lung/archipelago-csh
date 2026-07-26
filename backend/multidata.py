@@ -208,6 +208,7 @@ def individual_player_data(extract_folder_path, arch_file_path, room_id, slot: i
     locations: list = []
     hints: list = []
     name: str = ""
+    player_uuid: str = ""
 
     with conn.cursor() as cur:
         # Get all the locations ahead of time no matter whether there's an apsave
@@ -221,7 +222,7 @@ def individual_player_data(extract_folder_path, arch_file_path, room_id, slot: i
             location["number"] = location_info[1]
             locations.append(location)
 
-        cur.execute("""SELECT i.id, i.name, s.name FROM items as i, slots as s
+        cur.execute("""SELECT i.id, i.name, s.name, s.player_uuid FROM items as i, slots as s
                     WHERE i.room_id = %s AND s.room_id = i.room_id AND s.id = %s AND i.game = s.game""", (room_id, slot))
         items_db = cur.fetchall()
         item_infos = {}
@@ -229,6 +230,7 @@ def individual_player_data(extract_folder_path, arch_file_path, room_id, slot: i
             item_infos[item_info[0]] = {}
             item_infos[item_info[0]]['name'] = item_info[1]
             name = item_info[2]
+            player_uuid = item_info[3]
 
         count = 1 # Tracks order of received items
         for item in decoded_arch["precollected_items"][slot]:
@@ -306,7 +308,7 @@ def individual_player_data(extract_folder_path, arch_file_path, room_id, slot: i
 
                                     hints.append(hint)
         
-        return items, locations, hints, name
+        return items, locations, hints, name, player_uuid
 
 """
 Gets the info of every item received by all players 
