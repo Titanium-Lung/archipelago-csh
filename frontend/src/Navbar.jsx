@@ -16,6 +16,13 @@ export function Navbar({ user, full = true }) {
                     <li className="nav-item active">
                         <a className="nav-link" href="/">Home</a>
                     </li>
+                    {
+                        full && (
+                            <li className="nav-item">
+                                <a className="nav-link" href="/stats">Stats</a>
+                            </li>
+                        )
+                    }
                     <li className="nav-item">
                         <a className="nav-link" href="https://github.com/Titanium-Lung/archipelago-csh">Github</a>
                     </li>

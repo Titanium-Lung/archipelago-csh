@@ -538,9 +538,6 @@ Assigns (or unassigns) the current logged in user to the requested slot
 """
 @api.route("/assign/<room_id>/<int:slot>", methods=["PUT", "DELETE"])
 def assign_to_slot(room_id, slot):
-    if not exists(room_id).get("exists"):
-        return jsonify({"error": "No archipelago game with this id"}), 404
-
     if 'userinfo' not in session:
         return jsonify({"error": "User is not logged in"}), 403
 
@@ -553,6 +550,9 @@ def assign_to_slot(room_id, slot):
     with pool.connection() as conn:
         with conn.cursor() as cur:
             if request.method == 'PUT':
+                if not exists(room_id).get("exists"):
+                    return jsonify({"error": "No archipelago game with this id"}), 404
+
                 cur.execute("UPDATE slots SET player_uuid = %s WHERE id = %s AND room_id = %s", (uuid, slot, room_id))
 
                 conn.commit()
@@ -563,7 +563,7 @@ def assign_to_slot(room_id, slot):
 
                 conn.commit()
 
-                return jsonify({"message": "Sucecssfully UNassigned"})
+                return jsonify({"message": "Successfully UNassigned"})
 
 """
 Gets every item received by every player
@@ -582,8 +582,11 @@ def sphere_items(room_id):
             
             return jsonify({"items": items})
 
-@api.route("/history")
-def get_history():
+"""
+Get information about the logged in user's past and ongoing archipelago sessions
+"""
+@api.route("/stats")
+def get_stats():
     if 'userinfo' not in session:
         return jsonify({"error": "User is not logged in"}), 403
 
@@ -595,7 +598,8 @@ def get_history():
 
     with pool.connection() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT name, game, checks FROM slots WHERE player_uuid = %s", (uuid,))
+            cur.execute("""SELECT s.name, s.game, s.checks, s.room_id, s.id FROM slots as s, rooms as r 
+                WHERE s.player_uuid = %s""", (uuid,))
             slots_db = cur.fetchall()
 
             slots = []
@@ -604,9 +608,34 @@ def get_history():
                 slot['name'] = slot_info[0]
                 slot['game'] = slot_info[1]
                 slot['checks'] = slot_info[2]
+                slot['room_id'] = slot_info[3]
+                slot['slot'] = slot_info[4]
                 slots.append(slot)
 
-            return jsonify({"slots": slots})
+            cur.execute("""SELECT SUM(checks), COUNT(*), COUNT(DISTINCT room_id) FROM slots WHERE player_uuid = %s""", (uuid,))
+            totals_all = cur.fetchone()
+            totals = {}
+            totals['checks'] = totals_all[0]
+            totals['games'] = totals_all[1]
+            totals['sessions'] = totals_all[2]
+
+            cur.execute("""SELECT AVG(c.games), AVG(c.checks) FROM 
+                (SELECT COUNT(*) as games, SUM(checks) as checks FROM slots WHERE player_uuid = %s GROUP BY room_id) as c""", (uuid,))
+            averages = cur.fetchone()
+            totals['average_games'] = averages[0]
+            totals['average_checks'] = averages[1]
+
+            cur.execute("SELECT COUNT(*), AVG(checks), SUM(checks) from slots as s WHERE player_uuid = %s group by room_id", (uuid,))
+            totals_per_session = cur.fetchall()
+            session_totals = []
+            for session_info in totals_per_session:
+                session_stats = {}
+                session_stats['games'] = session_info[0]
+                session_stats['average_checks'] = session_info[1]
+                session_stats['checks'] = session_info[2]
+                session_totals.append(session_stats)
+
+            return jsonify({"slots": slots, "totals": totals, "session_totals": session_totals})
 
 
 """
@@ -717,6 +746,15 @@ def apply_migrations():
                         cur.execute(f.read())
                     cur.execute("INSERT INTO migrations (filename) VALUES (%s)", (filename,))
                     conn.commit()
+
+"""
+Unused function to clean up old slots 
+"""
+def slots_cleanup():
+    with pool.connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE from slots WHERE player_uuid is null AND room_id NOT IN (SELECT room_id from rooms)")
+            conn.commit()
 
 app.register_blueprint(api, url_prefix='/api')
 
