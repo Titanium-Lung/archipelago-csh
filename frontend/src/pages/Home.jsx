@@ -121,6 +121,7 @@ function Home() {
                             <table className="table table-bordered">
                                 <thead>
                                     <tr className="table-primary">
+                                        <th>Name</th>
                                         <th>Port</th>
                                         <th>Room Page</th>
                                         <th>Multitracker</th>
@@ -132,6 +133,7 @@ function Home() {
                                 <tbody>
                                     {rooms.map((room, index) => (
                                         <tr key={index}>
+                                            <td>{room.name}</td>
                                             <td>{room.port}</td>
                                             <td><Link to={`/room/${room.room_id}`}>Room</Link></td>
                                             <td><Link to={`/multitracker/${room.room_id}`}>Tracker</Link></td>

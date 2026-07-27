@@ -278,9 +278,11 @@ def individual_player_data(extract_folder_path, arch_file_path, room_id, slot: i
                                 else:
                                     location["checked"] = False
 
-                            if updated_locations_checked != locations_checked:
-                                cur.execute("UPDATE slots SET checks = %s WHERE id = %s AND room_id = %s", (updated_locations_checked, slot, room_id))
-                                conn.commit()
+                            if (0, slot) in decoded_apsave["client_game_state"]:
+                                if updated_locations_checked != locations_checked and decoded_apsave["client_game_state"][(0, slot)] != 30:
+                                    cur.execute("""UPDATE slots SET checks = %s WHERE id = %s AND room_id = %s
+                                                AND LOWER(name) NOT IN (SELECT name FROM released_games WHERE room_id = %s)""", (updated_locations_checked, slot, room_id, room_id))
+                                    conn.commit()
                             
                             if (0, slot) in decoded_apsave["hints"]:
                                 slot_hints = ([], [])

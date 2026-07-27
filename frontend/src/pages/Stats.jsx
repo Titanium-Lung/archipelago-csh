@@ -68,6 +68,7 @@ function Stats() {
                                 <th>Name</th>
                                 <th>Game</th>
                                 <th>Checks</th>
+                                <th>Session Name</th>
                                 <th>Remove</th>
                             </tr>
                         </thead>
@@ -77,6 +78,7 @@ function Stats() {
                                     <td>{slot.name}</td>
                                     <td>{slot.game}</td>
                                     <td>{slot.checks}</td>
+                                    <td>{slot.room_name}</td>
                                     <td><button className="btn btn-danger" onClick={() => setDeleting(slot.room_id, slot.slot)}>Remove</button></td>
                                 </tr>
                             ))}
@@ -139,6 +141,7 @@ function Stats() {
                                     <th>Games</th>
                                     <th>Checks</th>
                                     <th>Average Checks</th>
+                                    <th>Session Name</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -147,6 +150,7 @@ function Stats() {
                                         <td>{session.games}</td>
                                         <td>{session.checks}</td>
                                         <td>{parseFloat(session.average_checks)}</td>
+                                        <td>{session.name}</td>
                                     </tr>
                                 ))}
                             </tbody>

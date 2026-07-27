@@ -242,7 +242,7 @@ def get_all_rooms():
 
     with pool.connection() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT room_id, port, start, admin FROM rooms WHERE port >= %s AND port < %s", (SERVER_PORT, SERVER_PORT+PORT_RANGE))
+            cur.execute("SELECT room_id, port, start, admin, extract_folder_path FROM rooms WHERE port >= %s AND port < %s AND active = %s", (SERVER_PORT, SERVER_PORT+PORT_RANGE, True))
             db_rooms = cur.fetchall()
             for room in db_rooms:
                 room_info = {}
@@ -251,6 +251,7 @@ def get_all_rooms():
                 room_info['start'] = format_datetime(room[2].astimezone(pytz.timezone(data["timeZone"])), format='short', locale=data["locale"].replace('-', '_'))
                 room_info['start_for_sorting'] = room[2]
                 room_info['admin_uuid'] = room[3]
+                room_info['name'] = room[4][room[4].rfind('/')+1:]
                 if is_running(room[0]).get("running"):
                     room_info['running'] = True
                 else:
@@ -283,7 +284,9 @@ def delete_room(room_id):
             
             shutil.rmtree(extract_folder_path)
 
-            cur.execute("DELETE FROM rooms WHERE room_id = %s", (room_id,))
+            cur.execute("DELETE FROM locations WHERE room_id = %s", (room_id,))
+            cur.execute("DELETE FROM items WHERE room_id = %s", (room_id,))
+            cur.execute("UPDATE rooms SET active = %s WHERE room_id = %s", (False, room_id))
 
         conn.commit()
 
@@ -598,8 +601,8 @@ def get_stats():
 
     with pool.connection() as conn:
         with conn.cursor() as cur:
-            cur.execute("""SELECT s.name, s.game, s.checks, s.room_id, s.id FROM slots as s, rooms as r 
-                WHERE s.player_uuid = %s""", (uuid,))
+            cur.execute("""SELECT s.name, s.game, s.checks, s.room_id, s.id, r.extract_folder_path FROM slots as s, rooms as r 
+                WHERE s.player_uuid = %s AND s.room_id = r.room_id""", (uuid,))
             slots_db = cur.fetchall()
 
             slots = []
@@ -610,6 +613,7 @@ def get_stats():
                 slot['checks'] = slot_info[2]
                 slot['room_id'] = slot_info[3]
                 slot['slot'] = slot_info[4]
+                slot['room_name'] = slot_info[5][slot_info[5].rfind("/")+1:]
                 slots.append(slot)
 
             cur.execute("""SELECT SUM(checks), COUNT(*), COUNT(DISTINCT room_id) FROM slots WHERE player_uuid = %s""", (uuid,))
@@ -625,7 +629,8 @@ def get_stats():
             totals['average_games'] = averages[0]
             totals['average_checks'] = averages[1]
 
-            cur.execute("SELECT COUNT(*), AVG(checks), SUM(checks) from slots as s WHERE player_uuid = %s group by room_id", (uuid,))
+            cur.execute("""SELECT COUNT(*), AVG(s.checks), SUM(s.checks), r.extract_folder_path 
+                        FROM slots as s, rooms as r WHERE s.player_uuid = %s AND s.room_id = r.room_id GROUP BY r.room_id""", (uuid,))
             totals_per_session = cur.fetchall()
             session_totals = []
             for session_info in totals_per_session:
@@ -633,6 +638,7 @@ def get_stats():
                 session_stats['games'] = session_info[0]
                 session_stats['average_checks'] = session_info[1]
                 session_stats['checks'] = session_info[2]
+                session_stats['name'] = session_info[3][session_info[3].rfind("/")+1:]
                 session_totals.append(session_stats)
 
             return jsonify({"slots": slots, "totals": totals, "session_totals": session_totals})
@@ -646,7 +652,7 @@ def restart_all():
 
     with psycopg.connect(f"dbname={DB_NAME} user={DB_USER} password={DB_PASS} host={DB_HOST}") as conn: # Connection pool isn't open yet. Should be okay since it runs once at the start
         with conn.cursor() as cur:
-            cur.execute("SELECT room_id, port, extract_folder_path, arch_file_path FROM rooms WHERE port >= %s AND port < %s", (SERVER_PORT, SERVER_PORT+PORT_RANGE))
+            cur.execute("SELECT room_id, port, extract_folder_path, arch_file_path FROM rooms WHERE port >= %s AND port < %s AND active = %s", (SERVER_PORT, SERVER_PORT+PORT_RANGE, True))
             rooms_db = cur.fetchall()
             
             for room in rooms_db:
