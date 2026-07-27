@@ -60,6 +60,56 @@ function Stats() {
             <Navbar user={user} />
             <div className="text-center">
                 <h1>Stats</h1>
+                <div>
+                    <h2>Overall stats</h2>
+                    <div className="d-flex justify-content-center mx-md-5">
+                        <table className="table table-bordered table-hover">
+                            <thead>
+                                <tr className="table table-primary">
+                                    <th>Total Sessions</th>
+                                    <th>Total Games</th>
+                                    <th>Total Checks</th>
+                                    <th>Average Games</th>
+                                    <th>Average Checks Per Session</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>{totals.sessions}</td>
+                                    <td>{totals.games}</td>
+                                    <td>{totals.checks}</td>
+                                    <td>{parseFloat(totals.average_games)}</td>
+                                    <td>{parseFloat(totals.average_checks)}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div>
+                    <h2>Stats by session</h2>
+                    <div className="d-flex justify-content-center mx-md-5">
+                        <table className="table table-bordered table-hover">
+                            <thead>
+                                <tr className="table table-primary">
+                                    <th>Session Name</th>
+                                    <th>Games</th>
+                                    <th>Checks</th>
+                                    <th>Average Checks</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {sessionTotals.map((session, index) => (
+                                    <tr key={index}>
+                                        <td>{session.name}</td>
+                                        <td>{session.games}</td>
+                                        <td>{session.checks}</td>
+                                        <td>{parseFloat(session.average_checks)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
                 <h2>Previous games</h2>
                 <div className="d-flex justify-content-center mx-md-5">
                     <table className="table table-bordered table-hover">
@@ -106,56 +156,6 @@ function Stats() {
                     )}
 
                     {deletingRoomId && <div className="modal-backdrop show" />}
-                </div>
-                <div>
-                    <h2>Overall stats</h2>
-                    <div className="d-flex justify-content-center mx-md-5">
-                        <table className="table table-bordered table-hover">
-                            <thead>
-                                <tr className="table table-primary">
-                                    <th>Total Sessions</th>
-                                    <th>Total Games</th>
-                                    <th>Total Checks</th>
-                                    <th>Average Games</th>
-                                    <th>Average Checks Per Session</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>{totals.sessions}</td>
-                                    <td>{totals.games}</td>
-                                    <td>{totals.checks}</td>
-                                    <td>{parseFloat(totals.average_games)}</td>
-                                    <td>{parseFloat(totals.average_checks)}</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <div>
-                    <h2>Stats by session</h2>
-                    <div className="d-flex justify-content-center mx-md-5">
-                        <table className="table table-bordered table-hover">
-                            <thead>
-                                <tr className="table table-primary">
-                                    <th>Games</th>
-                                    <th>Checks</th>
-                                    <th>Average Checks</th>
-                                    <th>Session Name</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {sessionTotals.map((session, index) => (
-                                    <tr key={index}>
-                                        <td>{session.games}</td>
-                                        <td>{session.checks}</td>
-                                        <td>{parseFloat(session.average_checks)}</td>
-                                        <td>{session.name}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
                 </div>
             </div>
         </div>
