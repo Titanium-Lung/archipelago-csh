@@ -1,7 +1,7 @@
 import socket
 import threading
 
-HOST = "localhost"
+HOST = "0.0.0.0"
 PORT = 38280
 
 def handle_connection(conn):
