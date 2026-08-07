@@ -16,6 +16,8 @@ function Room() {
     const [log, setLog] = useState(["Populating log..."])
     const [players, setPlayers] = useState([])
     const [admin, setAdmin] = useState('')
+    const [copiedPort, setCopiedPort] = useState("Copy")
+    const [copiedLink, setCopiedLink] = useState("Copy")
 
     useEffect(() => {
         async function restartServer() {
@@ -142,6 +144,11 @@ function Room() {
         }
     }
 
+    function copyToClipboard(text, set) {
+        navigator.clipboard.writeText(text)
+        set("Copied!")
+    }
+
     function sendToPage(url) {
         navigate(url)
     }
@@ -158,11 +165,11 @@ function Room() {
                         <div>
                             <p className="d-flex gap-2 align-items-center justify-content-center">
                                 Port: <strong>{port}</strong> 
-                                <button className="btn btn-copy" onClick={() => {navigator.clipboard.writeText(port)}}>Copy</button>
+                                <button className="btn btn-copy" onClick={() => copyToClipboard(port, setCopiedPort)}>{copiedPort}</button>
                             </p>
                             <p className="d-flex gap-2 align-items-center justify-content-center">
                                 Connect to: <strong>archipelago.csh.rit.edu:{port}</strong> 
-                                <button className="btn btn-copy" onClick={() => {navigator.clipboard.writeText(`archipelago.csh.rit.edu:${port}`)}}>Copy</button>
+                                <button className="btn btn-copy" onClick={() => copyToClipboard(`archipelago.csh.rit.edu:${port}`, setCopiedLink)}>{copiedLink}</button>
                             </p>
                         </div>
                     ) : (
