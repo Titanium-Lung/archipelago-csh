@@ -167,6 +167,7 @@ def upload_file():
         return jsonify({"error": "No archipelago file found in zip"}), 400
 
     arch_file_path = os.path.join(extract_folder_path, filename)
+    room_name = extract_folder_path[extract_folder_path.rfind('/')+1:]
 
     with open(arch_file_path, "rb") as f:
         data = f.read()
@@ -182,8 +183,8 @@ def upload_file():
     
         with pool.connection() as conn:
             with conn.cursor() as cur:
-                cur.execute("INSERT INTO rooms VALUES (%s, %s, %s, %s, %s, %s, %s)", 
-                            (room_id, port, admin, extract_folder_path, arch_file_path, False, start))
+                cur.execute("INSERT INTO rooms (room_id, port, admin, extract_folder_path, arch_file_path, start, name) VALUES (%s, %s, %s, %s, %s, %s, %s)", 
+                            (room_id, port, admin, extract_folder_path, arch_file_path, start, room_name))
 
                 # Build a list of every location and all the info about it to be inserted into the database
                 # Also the name and game of every slot
@@ -242,7 +243,7 @@ def get_all_rooms():
 
     with pool.connection() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT room_id, port, start, admin, extract_folder_path FROM rooms WHERE port >= %s AND port < %s AND active = %s", (SERVER_PORT, SERVER_PORT+PORT_RANGE, True))
+            cur.execute("SELECT room_id, port, start, admin, extract_folder_path, name FROM rooms WHERE port >= %s AND port < %s AND active = %s", (SERVER_PORT, SERVER_PORT+PORT_RANGE, True))
             db_rooms = cur.fetchall()
             for room in db_rooms:
                 room_info = {}
@@ -251,7 +252,7 @@ def get_all_rooms():
                 room_info['start'] = format_datetime(room[2].astimezone(pytz.timezone(data["timeZone"])), format='short', locale=data["locale"].replace('-', '_'))
                 room_info['start_for_sorting'] = room[2]
                 room_info['admin_uuid'] = room[3]
-                room_info['name'] = room[4][room[4].rfind('/')+1:]
+                room_info['name'] = room[5]
                 if is_running(room[0]).get("running"):
                     room_info['running'] = True
                 else:
@@ -419,13 +420,39 @@ def room_info(room_id):
 
     with pool.connection() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT port, admin FROM rooms WHERE room_id = %s", (room_id,))
+            cur.execute("SELECT port, admin, name FROM rooms WHERE room_id = %s", (room_id,))
             info = cur.fetchone()
             
             return jsonify({
                 "port": info[0],
-                "admin": info[1]
+                "admin": info[1],
+                "name": info[2]
             })
+
+"""
+Changes the room name of the given room
+"""
+@api.route("/room/change/<room_id>", methods=["PUT"])
+@_AUTH.oidc_auth('default')
+def change_room_name(room_id):
+    if not exists(room_id).get("exists"):
+        return jsonify({"error": "No archipelago game with this id"}), 404
+
+    with pool.connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT admin FROM rooms WHERE room_id = %s", (room_id,))
+            admin = cur.fetchone()[0]
+
+            if session.get('userinfo').get('uuid') != admin:
+                return jsonify({"error": "user is not admin"}), 403
+
+            data = request.get_json()
+            name = data.get('name')
+
+            cur.execute("UPDATE rooms SET name = %s WHERE room_id = %s", (name, room_id))
+            conn.commit()
+
+            return jsonify({"message": "success"})
 
 """
 Write the given command to stdin of the process of the specified room
@@ -601,7 +628,7 @@ def get_stats():
 
     with pool.connection() as conn:
         with conn.cursor() as cur:
-            cur.execute("""SELECT s.name, s.game, s.checks, s.room_id, s.id, r.extract_folder_path FROM slots as s, rooms as r 
+            cur.execute("""SELECT s.name, s.game, s.checks, s.room_id, s.id, r.name FROM slots as s, rooms as r 
                 WHERE s.player_uuid = %s AND s.room_id = r.room_id""", (uuid,))
             slots_db = cur.fetchall()
 
@@ -613,7 +640,7 @@ def get_stats():
                 slot['checks'] = slot_info[2]
                 slot['room_id'] = slot_info[3]
                 slot['slot'] = slot_info[4]
-                slot['room_name'] = slot_info[5][slot_info[5].rfind("/")+1:]
+                slot['room_name'] = slot_info[5]
                 slots.append(slot)
 
             cur.execute("""SELECT SUM(checks), COUNT(*), COUNT(DISTINCT room_id) FROM slots WHERE player_uuid = %s""", (uuid,))
@@ -629,7 +656,7 @@ def get_stats():
             totals['average_games'] = averages[0]
             totals['average_checks'] = averages[1]
 
-            cur.execute("""SELECT COUNT(*), AVG(s.checks), SUM(s.checks), r.extract_folder_path 
+            cur.execute("""SELECT COUNT(*), AVG(s.checks), SUM(s.checks), r.name 
                         FROM slots as s, rooms as r WHERE s.player_uuid = %s AND s.room_id = r.room_id GROUP BY r.room_id""", (uuid,))
             totals_per_session = cur.fetchall()
             session_totals = []
@@ -638,7 +665,7 @@ def get_stats():
                 session_stats['games'] = session_info[0]
                 session_stats['average_checks'] = session_info[1]
                 session_stats['checks'] = session_info[2]
-                session_stats['name'] = session_info[3][session_info[3].rfind("/")+1:]
+                session_stats['name'] = session_info[3]
                 session_totals.append(session_stats)
 
             return jsonify({"slots": slots, "totals": totals, "session_totals": session_totals})
