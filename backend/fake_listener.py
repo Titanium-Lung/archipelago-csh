@@ -3,7 +3,7 @@ import threading
 import os
 
 HOST = "0.0.0.0"
-PORT = os.environ.get('FAKE_PORT', 38280)
+PORT = int(os.environ.get('FAKE_PORT', 38280))
 
 def handle_connection(conn):
     with conn:
