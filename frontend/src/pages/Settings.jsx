@@ -31,7 +31,6 @@ function Settings() {
                     <button className="btn btn-dark" onClick={() => setTheme("dark")}>Dark mode</button>
                 </div>
             </div>
-            
         </div>
     )
 }

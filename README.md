@@ -87,4 +87,4 @@ All archipelago rooms that are stored are restarted when the program boots up, u
 
 ## Planned features
 
-* Store information about users such as amount of checks gotten 
+[]

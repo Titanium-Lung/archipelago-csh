@@ -3,7 +3,7 @@ monkey.patch_all()
 
 import subprocess
 import time
-from app import restart_all, pool
+from app import restart_all, pool, apply_migrations
 from process_manager_client import terminate_all
 
 # Gunicorn configuration variables
@@ -20,6 +20,7 @@ def on_starting(server):
     fake_listener = subprocess.Popen(["python3", "fake_listener.py"])
     process_manager = subprocess.Popen(["python3", "process_manager.py"])
     time.sleep(1)
+    apply_migrations()
     restart_all()
 
 def post_fork(server, worker):

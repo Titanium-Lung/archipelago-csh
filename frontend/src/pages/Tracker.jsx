@@ -14,6 +14,8 @@ function Tracker() {
     const [hints, setHints] = useState([])
     const [locations, setLocations] = useState([])
 
+    const [assignedUUID, setAssigned] = useState(null)
+
     // Consts for sorting tables
     const [itemsSortedColumn, setItemsSortedColumn] = useState(localStorage.getItem("itemsSortedColumn") || null)
     const [itemsSortDirection, setItemsSortDirection] = useState(localStorage.getItem("itemsSortDirection") || null)
@@ -68,6 +70,7 @@ function Tracker() {
                 setFilteredLocations(result.locations)
 
                 setSlotName(result.name)
+                setAssigned(result.uuid)
             }
         }
         fetchItems()
@@ -154,6 +157,36 @@ function Tracker() {
         setFilteredHints(filteredItems)
     }, [filterHints])
 
+    async function assignToSlot() {
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/assign/${roomId}/${slot}`, {
+            method: "PUT",
+            credentials: "include"
+        })
+
+        const result = await response.json()
+
+        if (response.ok) {
+            setAssigned(user?.uuid)
+        } else {
+            console.log(result.error)
+        }
+    }
+
+    async function unassignSlot() {
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/assign/${roomId}/${slot}`, {
+            method: "DELETE",
+            credentials: "include"
+        })
+
+        const result = await response.json()
+
+        if (response.ok) {
+            setAssigned(null)
+        } else {
+            console.log(result.error)
+        }
+    }
+
     function sendToMultiTracker() {
         navigate(`/multitracker/${roomId}`)
     }
@@ -207,10 +240,27 @@ function Tracker() {
         <div>
             <title>{`${slotName}'s Tracker`}</title>
             <Navbar user={user}></Navbar>
-            <div className="mx-md-5">
+            <div className="d-flex gap-2 mx-md-5">
                 <button className="btn btn-primary" onClick={sendToMultiTracker}>Back to Multiworld Tracker</button>
+                {
+                    assignedUUID === user?.uuid ? (
+                        <button className="btn btn-danger" onClick={unassignSlot}>Unassign</button>
+                    ) : (
+                        <div>
+                        {
+                            assignedUUID === null ? (
+                                <button className="btn btn-success" onClick={assignToSlot}>Assign</button>
+                            ) : (
+                                <button className="btn btn-success disabled">Can't assign</button>
+                            )
+                        }
+                        </div>
+                    )
+                }
             </div>
             <h1 className="text-center">Individual Tracker</h1>
+            <p className="text-center">Reload this page to update how many checks you've gotten. Won't update if your goal is beaten or your game is released. 
+            </p>
             <div className="mx-md-5 m-3">
                 <input type="text" id="input" name="search" placeholder="Search" value={itemFilter} onChange={e => setItemFilter(e.target.value)} />
                 <button className="btn btn-primary" onClick={() => collapseItems ? setCollapseItems(false) : setCollapseItems(true)} style={{ marginLeft: '10px' }}>Collapse</button>
