@@ -629,7 +629,7 @@ def get_stats():
     with pool.connection() as conn:
         with conn.cursor() as cur:
             cur.execute("""SELECT s.name, s.game, s.checks, s.room_id, s.id, r.name FROM slots as s, rooms as r 
-                WHERE s.player_uuid = %s AND s.room_id = r.room_id""", (uuid,))
+                WHERE s.player_uuid = %s AND s.room_id = r.room_id ORDER BY r.start DESC""", (uuid,))
             slots_db = cur.fetchall()
 
             slots = []
@@ -657,7 +657,8 @@ def get_stats():
             totals['average_checks'] = averages[1]
 
             cur.execute("""SELECT COUNT(*), AVG(s.checks), SUM(s.checks), r.name 
-                        FROM slots as s, rooms as r WHERE s.player_uuid = %s AND s.room_id = r.room_id GROUP BY r.room_id""", (uuid,))
+                        FROM slots as s, rooms as r WHERE s.player_uuid = %s AND s.room_id = r.room_id 
+                        GROUP BY r.room_id, r.start ORDER BY r.start DESC""", (uuid,))
             totals_per_session = cur.fetchall()
             session_totals = []
             for session_info in totals_per_session:
@@ -786,7 +787,8 @@ Unused function to clean up old slots
 def slots_cleanup():
     with pool.connection() as conn:
         with conn.cursor() as cur:
-            cur.execute("DELETE from slots WHERE player_uuid is null AND room_id NOT IN (SELECT room_id from rooms)")
+            cur.execute("DELETE from slots WHERE player_uuid is null AND room_id IN (SELECT room_id FROM rooms WHERE active = false)")
+            cur.execute("DELETE from rooms WHERE room_id NOT IN (SELECT room_id FROM slots)")
             conn.commit()
 
 app.register_blueprint(api, url_prefix='/api')
