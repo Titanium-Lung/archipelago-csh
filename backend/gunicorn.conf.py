@@ -13,9 +13,11 @@ worker_class = "gevent"
 control_socket_disable = True
 
 process_manager = None
+fake_listener = None
 
 def on_starting(server):
-    global process_manager
+    global process_manager, fake_listener
+    fake_listener = subprocess.Popen(["python3", "fake_listener.py"])
     process_manager = subprocess.Popen(["python3", "process_manager.py"])
     time.sleep(1)
     restart_all()
@@ -28,3 +30,6 @@ def on_exit(server):
     if process_manager:
         process_manager.terminate()
         process_manager.wait()
+    if fake_listener:
+        fake_listener.terminate()
+        fake_listener.wait()
