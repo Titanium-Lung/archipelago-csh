@@ -1,8 +1,9 @@
 import socket
 import threading
+import os
 
 HOST = "0.0.0.0"
-PORT = 38280
+PORT = os.environ.get('FAKE_PORT', 38280)
 
 def handle_connection(conn):
     with conn:
