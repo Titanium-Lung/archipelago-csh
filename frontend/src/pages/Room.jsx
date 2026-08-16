@@ -10,12 +10,16 @@ function Room() {
     const bottomRef = useRef(null)
     const [initialFetch, setInitialFetch] = useState(true)
     const [wasAtBottom, setWasAtBottom] = useState(true)
+    const [showDialogue, setShowDialogue] = useState(false)
     const user = useUser()
 
     const [port, setPort] = useState("")
     const [log, setLog] = useState(["Populating log..."])
     const [players, setPlayers] = useState([])
     const [admin, setAdmin] = useState('')
+    const [name, setName] = useState("")
+    const [copiedPort, setCopiedPort] = useState("Copy")
+    const [copiedLink, setCopiedLink] = useState("Copy")
 
     useEffect(() => {
         async function restartServer() {
@@ -43,6 +47,7 @@ function Room() {
             if (response.ok) {
                 setPort(result.port)
                 setAdmin(result.admin)
+                setName(result.name)
             } 
         }
         fetchRoom()
@@ -142,6 +147,29 @@ function Room() {
         }
     }
 
+    async function changeName() {
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/room/change/${roomId}`, {
+            method: "PUT",
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: document.getElementById('name_input').value }),
+            credentials: "include"
+        })
+
+        const result = await response.json()
+
+        if (!response.ok) {
+            console.log(result.error)
+        }
+
+        setShowDialogue(false)
+        window.location.reload()
+    }
+
+    function copyToClipboard(text, set) {
+        navigator.clipboard.writeText(text)
+        set("Copied!")
+    }
+
     function sendToPage(url) {
         navigate(url)
     }
@@ -156,13 +184,23 @@ function Room() {
                 {
                     port != "" ? (
                         <div>
+                            {
+                                admin === user?.uuid ? (
+                                    <p className="d-flex gap-2 align-items-center justify-content-center my-2">
+                                        Room name: <strong>{name}</strong>
+                                        <button className="btn btn-success" onClick={() => setShowDialogue(true)}>Edit</button>
+                                    </p>
+                                ) : (
+                                    <p>Room name: <strong>{name}</strong></p>
+                                )
+                            }
                             <p className="d-flex gap-2 align-items-center justify-content-center">
                                 Port: <strong>{port}</strong> 
-                                <button className="btn btn-copy" onClick={() => {navigator.clipboard.writeText(port)}}>Copy</button>
+                                <button className="btn btn-copy" onClick={() => copyToClipboard(port, setCopiedPort)}>{copiedPort}</button>
                             </p>
                             <p className="d-flex gap-2 align-items-center justify-content-center">
                                 Connect to: <strong>archipelago.csh.rit.edu:{port}</strong> 
-                                <button className="btn btn-copy" onClick={() => {navigator.clipboard.writeText(`archipelago.csh.rit.edu:${port}`)}}>Copy</button>
+                                <button className="btn btn-copy" onClick={() => copyToClipboard(`archipelago.csh.rit.edu:${port}`, setCopiedLink)}>{copiedLink}</button>
                             </p>
                         </div>
                     ) : (
@@ -171,6 +209,27 @@ function Room() {
                         </div>
                     )
                 }
+                {showDialogue && (
+                    <div className="modal show d-block" tabIndex="-1">
+                        <div className="modal-dialog">
+                            <div className="modal-content">
+                                <div className="modal-header">
+                                    <h5 className="modal-title">Change room title</h5>
+                                    <button className="btn-close" onClick={() => setShowDialogue(false)} />
+                                </div>
+                                <div className="modal-body">
+                                    <input type="text" id="name_input" name="Room name" placeholder="Room name" defaultValue={name} /*style={{width: '500px', marginBottom: '10px', marginRight: '20px'}}*/ />
+                                </div>
+                                <div className="modal-footer">
+                                    <button className="btn btn-secondary" onClick={() => setShowDialogue(false)}>Cancel</button>
+                                    <button className="btn btn-success" onClick={() => changeName()}>Edit</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                {showDialogue && <div className="modal-backdrop show" />}
+
                 <div>
                     <Link to={`/multitracker/${roomId}`}>Multiworld Tracker</Link>
                 </div>

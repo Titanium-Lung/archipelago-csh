@@ -208,6 +208,7 @@ def individual_player_data(extract_folder_path, arch_file_path, room_id, slot: i
     locations: list = []
     hints: list = []
     name: str = ""
+    player_uuid: str = ""
 
     with conn.cursor() as cur:
         # Get all the locations ahead of time no matter whether there's an apsave
@@ -221,14 +222,18 @@ def individual_player_data(extract_folder_path, arch_file_path, room_id, slot: i
             location["number"] = location_info[1]
             locations.append(location)
 
-        cur.execute("""SELECT i.id, i.name, s.name FROM items as i, slots as s
+        cur.execute("""SELECT i.id, i.name, s.name, s.player_uuid, s.checks FROM items as i, slots as s
                     WHERE i.room_id = %s AND s.room_id = i.room_id AND s.id = %s AND i.game = s.game""", (room_id, slot))
         items_db = cur.fetchall()
         item_infos = {}
         for item_info in items_db:
             item_infos[item_info[0]] = {}
             item_infos[item_info[0]]['name'] = item_info[1]
-            name = item_info[2]
+
+        # Generic slot info stored in every row
+        name = items_db[0][2]
+        player_uuid = items_db[0][3]
+        locations_checked = items_db[0][4]
 
         count = 1 # Tracks order of received items
         for item in decoded_arch["precollected_items"][slot]:
@@ -261,15 +266,23 @@ def individual_player_data(extract_folder_path, arch_file_path, room_id, slot: i
                                         items[item_name]["count"] = 1
                                     items[item_name]["last_order_received"] = count
                                     count+=1
-                            
+
+                            updated_locations_checked = 0
                             for location in locations:
                                 if (0, slot) in decoded_apsave["location_checks"]:
                                     if int(location["number"]) in decoded_apsave["location_checks"][(0, slot)]:
                                         location["checked"] = True
+                                        updated_locations_checked+=1
                                     else:
                                         location["checked"] = False
                                 else:
                                     location["checked"] = False
+
+                            if (0, slot) in decoded_apsave["client_game_state"]:
+                                if updated_locations_checked != locations_checked and decoded_apsave["client_game_state"][(0, slot)] != 30:
+                                    cur.execute("""UPDATE slots SET checks = %s WHERE id = %s AND room_id = %s
+                                                AND LOWER(name) NOT IN (SELECT name FROM released_games WHERE room_id = %s)""", (updated_locations_checked, slot, room_id, room_id))
+                                    conn.commit()
                             
                             if (0, slot) in decoded_apsave["hints"]:
                                 slot_hints = ([], [])
@@ -306,7 +319,7 @@ def individual_player_data(extract_folder_path, arch_file_path, room_id, slot: i
 
                                     hints.append(hint)
         
-        return items, locations, hints, name
+        return items, locations, hints, name, player_uuid
 
 """
 Gets the info of every item received by all players 

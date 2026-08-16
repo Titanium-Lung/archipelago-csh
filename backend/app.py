@@ -167,6 +167,7 @@ def upload_file():
         return jsonify({"error": "No archipelago file found in zip"}), 400
 
     arch_file_path = os.path.join(extract_folder_path, filename)
+    room_name = extract_folder_path[extract_folder_path.rfind('/')+1:]
 
     with open(arch_file_path, "rb") as f:
         data = f.read()
@@ -182,8 +183,8 @@ def upload_file():
     
         with pool.connection() as conn:
             with conn.cursor() as cur:
-                cur.execute("INSERT INTO rooms VALUES (%s, %s, %s, %s, %s, %s, %s)", 
-                            (room_id, port, admin, extract_folder_path, arch_file_path, False, start))
+                cur.execute("INSERT INTO rooms (room_id, port, admin, extract_folder_path, arch_file_path, start, name) VALUES (%s, %s, %s, %s, %s, %s, %s)", 
+                            (room_id, port, admin, extract_folder_path, arch_file_path, start, room_name))
 
                 # Build a list of every location and all the info about it to be inserted into the database
                 # Also the name and game of every slot
@@ -242,7 +243,7 @@ def get_all_rooms():
 
     with pool.connection() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT room_id, port, start, admin FROM rooms WHERE port >= %s AND port < %s", (SERVER_PORT, SERVER_PORT+PORT_RANGE))
+            cur.execute("SELECT room_id, port, start, admin, extract_folder_path, name FROM rooms WHERE port >= %s AND port < %s AND active = %s", (SERVER_PORT, SERVER_PORT+PORT_RANGE, True))
             db_rooms = cur.fetchall()
             for room in db_rooms:
                 room_info = {}
@@ -251,6 +252,7 @@ def get_all_rooms():
                 room_info['start'] = format_datetime(room[2].astimezone(pytz.timezone(data["timeZone"])), format='short', locale=data["locale"].replace('-', '_'))
                 room_info['start_for_sorting'] = room[2]
                 room_info['admin_uuid'] = room[3]
+                room_info['name'] = room[5]
                 if is_running(room[0]).get("running"):
                     room_info['running'] = True
                 else:
@@ -283,7 +285,9 @@ def delete_room(room_id):
             
             shutil.rmtree(extract_folder_path)
 
-            cur.execute("DELETE FROM rooms WHERE room_id = %s", (room_id,))
+            cur.execute("DELETE FROM locations WHERE room_id = %s", (room_id,))
+            cur.execute("DELETE FROM items WHERE room_id = %s", (room_id,))
+            cur.execute("UPDATE rooms SET active = %s WHERE room_id = %s", (False, room_id))
 
         conn.commit()
 
@@ -416,13 +420,39 @@ def room_info(room_id):
 
     with pool.connection() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT port, admin FROM rooms WHERE room_id = %s", (room_id,))
+            cur.execute("SELECT port, admin, name FROM rooms WHERE room_id = %s", (room_id,))
             info = cur.fetchone()
             
             return jsonify({
                 "port": info[0],
-                "admin": info[1]
+                "admin": info[1],
+                "name": info[2]
             })
+
+"""
+Changes the room name of the given room
+"""
+@api.route("/room/change/<room_id>", methods=["PUT"])
+@_AUTH.oidc_auth('default')
+def change_room_name(room_id):
+    if not exists(room_id).get("exists"):
+        return jsonify({"error": "No archipelago game with this id"}), 404
+
+    with pool.connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT admin FROM rooms WHERE room_id = %s", (room_id,))
+            admin = cur.fetchone()[0]
+
+            if session.get('userinfo').get('uuid') != admin:
+                return jsonify({"error": "user is not admin"}), 403
+
+            data = request.get_json()
+            name = data.get('name')
+
+            cur.execute("UPDATE rooms SET name = %s WHERE room_id = %s", (name, room_id))
+            conn.commit()
+
+            return jsonify({"message": "success"})
 
 """
 Write the given command to stdin of the process of the specified room
@@ -529,9 +559,41 @@ def individual_tracker_data(room_id, slot):
             cur.execute("SELECT extract_folder_path, arch_file_path FROM rooms WHERE room_id = %s", (room_id,))
             info = cur.fetchone()
 
-            items, locations, hints, name = multidata.individual_player_data(info[0], info[1], room_id, slot, conn)
+            items, locations, hints, name, player_uuid = multidata.individual_player_data(info[0], info[1], room_id, slot, conn)
             
-            return jsonify({"items": items, "locations": locations, "hints": hints, "name": name})
+            return jsonify({"items": items, "locations": locations, "hints": hints, "name": name, "uuid": player_uuid})
+
+"""
+Assigns (or unassigns) the current logged in user to the requested slot
+"""
+@api.route("/assign/<room_id>/<int:slot>", methods=["PUT", "DELETE"])
+def assign_to_slot(room_id, slot):
+    if 'userinfo' not in session:
+        return jsonify({"error": "User is not logged in"}), 403
+
+    uuid = None
+    if session.get('userinfo').get('preferred_username'):
+        uuid = session.get('userinfo').get('uuid')
+    else:
+        uuid = session.get('userinfo').get('sub')
+    
+    with pool.connection() as conn:
+        with conn.cursor() as cur:
+            if request.method == 'PUT':
+                if not exists(room_id).get("exists"):
+                    return jsonify({"error": "No archipelago game with this id"}), 404
+
+                cur.execute("UPDATE slots SET player_uuid = %s WHERE id = %s AND room_id = %s", (uuid, slot, room_id))
+
+                conn.commit()
+
+                return jsonify({"message": "Successfully assigned"})
+            elif request.method == 'DELETE':
+                cur.execute("UPDATE slots SET player_uuid = %s WHERE id = %s AND room_id = %s", (None, slot, room_id))
+
+                conn.commit()
+
+                return jsonify({"message": "Successfully UNassigned"})
 
 """
 Gets every item received by every player
@@ -550,6 +612,65 @@ def sphere_items(room_id):
             
             return jsonify({"items": items})
 
+"""
+Get information about the logged in user's past and ongoing archipelago sessions
+"""
+@api.route("/stats")
+def get_stats():
+    if 'userinfo' not in session:
+        return jsonify({"error": "User is not logged in"}), 403
+
+    uuid = None
+    if session.get('userinfo').get('preferred_username'):
+        uuid = session.get('userinfo').get('uuid')
+    else:
+        uuid = session.get('userinfo').get('sub')
+
+    with pool.connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""SELECT s.name, s.game, s.checks, s.room_id, s.id, r.name FROM slots as s, rooms as r 
+                WHERE s.player_uuid = %s AND s.room_id = r.room_id ORDER BY r.start DESC""", (uuid,))
+            slots_db = cur.fetchall()
+
+            slots = []
+            for slot_info in slots_db:
+                slot = {}
+                slot['name'] = slot_info[0]
+                slot['game'] = slot_info[1]
+                slot['checks'] = slot_info[2]
+                slot['room_id'] = slot_info[3]
+                slot['slot'] = slot_info[4]
+                slot['room_name'] = slot_info[5]
+                slots.append(slot)
+
+            cur.execute("""SELECT SUM(checks), COUNT(*), COUNT(DISTINCT room_id) FROM slots WHERE player_uuid = %s""", (uuid,))
+            totals_all = cur.fetchone()
+            totals = {}
+            totals['checks'] = totals_all[0]
+            totals['games'] = totals_all[1]
+            totals['sessions'] = totals_all[2]
+
+            cur.execute("""SELECT AVG(c.games), AVG(c.checks) FROM 
+                (SELECT COUNT(*) as games, SUM(checks) as checks FROM slots WHERE player_uuid = %s GROUP BY room_id) as c""", (uuid,))
+            averages = cur.fetchone()
+            totals['average_games'] = averages[0]
+            totals['average_checks'] = averages[1]
+
+            cur.execute("""SELECT COUNT(*), AVG(s.checks), SUM(s.checks), r.name 
+                        FROM slots as s, rooms as r WHERE s.player_uuid = %s AND s.room_id = r.room_id 
+                        GROUP BY r.room_id, r.start ORDER BY r.start DESC""", (uuid,))
+            totals_per_session = cur.fetchall()
+            session_totals = []
+            for session_info in totals_per_session:
+                session_stats = {}
+                session_stats['games'] = session_info[0]
+                session_stats['average_checks'] = session_info[1]
+                session_stats['checks'] = session_info[2]
+                session_stats['name'] = session_info[3]
+                session_totals.append(session_stats)
+
+            return jsonify({"slots": slots, "totals": totals, "session_totals": session_totals})
+
 
 """
 Starts up every archipelago server in the uploads folder
@@ -559,7 +680,7 @@ def restart_all():
 
     with psycopg.connect(f"dbname={DB_NAME} user={DB_USER} password={DB_PASS} host={DB_HOST}") as conn: # Connection pool isn't open yet. Should be okay since it runs once at the start
         with conn.cursor() as cur:
-            cur.execute("SELECT room_id, port, extract_folder_path, arch_file_path FROM rooms WHERE port >= %s AND port < %s", (SERVER_PORT, SERVER_PORT+PORT_RANGE))
+            cur.execute("SELECT room_id, port, extract_folder_path, arch_file_path FROM rooms WHERE port >= %s AND port < %s AND active = %s", (SERVER_PORT, SERVER_PORT+PORT_RANGE, True))
             rooms_db = cur.fetchall()
             
             for room in rooms_db:
@@ -659,6 +780,16 @@ def apply_migrations():
                         cur.execute(f.read())
                     cur.execute("INSERT INTO migrations (filename) VALUES (%s)", (filename,))
                     conn.commit()
+
+"""
+Unused function to clean up old slots 
+"""
+def slots_cleanup():
+    with pool.connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE from slots WHERE player_uuid is null AND room_id IN (SELECT room_id FROM rooms WHERE active = false)")
+            cur.execute("DELETE from rooms WHERE room_id NOT IN (SELECT room_id FROM slots)")
+            conn.commit()
 
 app.register_blueprint(api, url_prefix='/api')
 
