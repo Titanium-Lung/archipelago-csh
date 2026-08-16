@@ -758,7 +758,7 @@ def cleanup():
 Creates schema of database if it doesn't exist already
 """
 def apply_migrations():
-    with pool.connection() as conn:
+    with psycopg.connect(f"dbname={DB_NAME} user={DB_USER} password={DB_PASS} host={DB_HOST}") as conn: # Connection pool isn't open yet. Should be okay since it runs once at the start
         with conn.cursor() as cur:
             cur.execute("""CREATE TABLE IF NOT EXISTS migrations (
                 id       serial
