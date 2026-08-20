@@ -287,7 +287,9 @@ def delete_room(room_id):
 
             cur.execute("DELETE FROM locations WHERE room_id = %s", (room_id,))
             cur.execute("DELETE FROM items WHERE room_id = %s", (room_id,))
-            cur.execute("UPDATE rooms SET active = %s WHERE room_id = %s", (False, room_id))
+            cur.execute("UPDATE rooms SET active = false WHERE room_id = %s", (room_id,))
+            cur.execute("DELETE FROM slots WHERE player_uuid is null AND room_id IN (SELECT room_id FROM rooms WHERE active = false)")
+            cur.execute("DELETE FROM rooms WHERE room_id NOT IN (SELECT room_id FROM slots)")
 
         conn.commit()
 
@@ -780,16 +782,6 @@ def apply_migrations():
                         cur.execute(f.read())
                     cur.execute("INSERT INTO migrations (filename) VALUES (%s)", (filename,))
                     conn.commit()
-
-"""
-Unused function to clean up old slots 
-"""
-def slots_cleanup():
-    with pool.connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute("DELETE from slots WHERE player_uuid is null AND room_id IN (SELECT room_id FROM rooms WHERE active = false)")
-            cur.execute("DELETE from rooms WHERE room_id NOT IN (SELECT room_id FROM slots)")
-            conn.commit()
 
 app.register_blueprint(api, url_prefix='/api')
 
