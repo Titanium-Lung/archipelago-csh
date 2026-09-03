@@ -270,8 +270,18 @@ function Room() {
                         </table>
                     </div>
                 ) : (
-                    <div>
-                        <p>Populating players</p>
+                    <div className="d-flex justify-content-center mx-md-5">
+                        <table className="table table-bordered">
+                            <thead>
+                                <tr className="table-primary">
+                                    <th>Id</th>
+                                    <th>Name</th>
+                                    <th>Game</th>
+                                    <th>Patch file</th>
+                                    <th>Tracker</th>
+                                </tr>
+                            </thead>
+                        </table>
                     </div>
                 )
             }
