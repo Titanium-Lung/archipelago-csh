@@ -214,14 +214,14 @@ def upload_file():
                         for item_id in ids[game]['id_to_item_name']:
                             copy.write_row((game, ids[game]['id_to_item_name'][item_id], item_id, room_id))
         
-        args = {"arch_file_path": arch_file_path, "port": port, "extract_folder_path": extract_folder_path}
+            args = {"arch_file_path": arch_file_path, "port": port, "extract_folder_path": extract_folder_path}
 
-        result = start_server(room_id, args)
+            result = start_server(room_id, args)
 
-        if result.get("result", None):
-            return jsonify({"error": "The server failed to start"}), 500
-    
-        conn.commit()
+            if result.get("result", None):
+                return jsonify({"error": "The server failed to start"}), 500
+        
+            conn.commit()
 
     result = {
         "message": "Server started",
