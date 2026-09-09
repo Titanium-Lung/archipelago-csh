@@ -673,6 +673,22 @@ def get_stats():
 
             return jsonify({"slots": slots, "totals": totals, "session_totals": session_totals})
 
+"""
+Returns tracker data in the raw shape expected by ap-tracker
+(github.com/wrjones104/ap-tracker), a third-party notification client.
+"""
+@api.route("/ap_compat/<room_id>")
+def ap_compat_tracker(room_id):
+    if not exists(room_id).get("exists"):
+        return jsonify({"error": "No archipelago game with this id"}), 404
+
+    with pool.connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT arch_file_path, extract_folder_path FROM rooms WHERE room_id = %s", (room_id,))
+            info = cur.fetchone()
+
+            return jsonify(multidata.ap_compat_tracker_data(info[0], info[1]))
+
 
 """
 Starts up every archipelago server in the uploads folder
