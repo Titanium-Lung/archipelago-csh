@@ -199,8 +199,8 @@ def upload_file():
                                 location_tuple = decoded_arch["locations"][slot][location_id] # format is: (item_id, receiver_slot_id, unknown#)
 
                                 to_name = decoded_arch["slot_info"][location_tuple[1]].name
-                                location_name = ids[slotinfo.game]['id_to_location_name'][location_id]
-                                item_name = ids[decoded_arch["slot_info"][location_tuple[1]].game]['id_to_item_name'][location_tuple[0]]
+                                location_name = ids[slotinfo.game]['id_to_location_name'].get(location_id, "Unknown")
+                                item_name = ids[decoded_arch["slot_info"][location_tuple[1]].game]['id_to_item_name'].get(location_tuple[0], "Unknown")
 
                                 copy.write_row((slot, location_id, sphere_num, slotinfo.name, slotinfo.game, to_name, location_name, item_name, room_id))
                         sphere_num+=1
@@ -214,14 +214,14 @@ def upload_file():
                         for item_id in ids[game]['id_to_item_name']:
                             copy.write_row((game, ids[game]['id_to_item_name'][item_id], item_id, room_id))
         
-        args = {"arch_file_path": arch_file_path, "port": port, "extract_folder_path": extract_folder_path}
+            args = {"arch_file_path": arch_file_path, "port": port, "extract_folder_path": extract_folder_path}
 
-        result = start_server(room_id, args)
+            result = start_server(room_id, args)
 
-        if result.get("result", None):
-            return jsonify({"error": "The server failed to start"}), 500
-    
-        conn.commit()
+            if result.get("result", None):
+                return jsonify({"error": "The server failed to start"}), 500
+        
+            conn.commit()
 
     result = {
         "message": "Server started",
