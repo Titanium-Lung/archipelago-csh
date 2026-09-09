@@ -3,6 +3,11 @@
   overflow-y: auto;
 }
 
+.table-fill {
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+}
+
 th {
   position: sticky;
   top: 0;

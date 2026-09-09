@@ -318,8 +318,15 @@ function Tracker() {
                         </table>
                     </div>
                 ) : (
-                    <div>
-                        <p>Populating location info...</p>
+                    <div className="d-flex justify-content-center mx-md-5 table-contained">
+                        <table className="table table-bordered table-hover">
+                            <thead>
+                                <tr className="table table-primary">
+                                    <th onClick={() => setLocationSort("name")} style={{cursor: 'pointer'}}>Location</th>
+                                    <th onClick={() => setLocationSort("checked")} style={{cursor: 'pointer'}}>Checked</th>
+                                </tr>
+                            </thead>
+                        </table>
                     </div>
                 )
             }

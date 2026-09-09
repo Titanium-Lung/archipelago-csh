@@ -203,8 +203,20 @@ function Multitracker() {
                         </table>
                     </div>
                 ) : (
-                    <div>
-                        <p>Populating players</p>
+                    <div className="d-flex justify-content-center mx-md-5">
+                        <table className="table table-bordered table-hover">
+                            <thead>
+                                <tr className="table-primary">
+                                    <th>Id</th>
+                                    <th>Name</th>
+                                    <th>Game</th>
+                                    <th>Status</th>
+                                    <th>Checks</th>
+                                    <th>%</th>
+                                    <th>Last Check</th>
+                                </tr>
+                            </thead>
+                        </table>
                     </div>
                 )
             }

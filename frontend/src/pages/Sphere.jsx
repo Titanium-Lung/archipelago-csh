@@ -91,7 +91,7 @@ function Sphere() {
             </div>
             {
                 sphereData.length > 0 ? (
-                    <div className="d-flex justify-content-center mx-md-5">
+                    <div className="d-flex justify-content-center mx-md-5 table-fill">
                         <table className="table table-hover">
                             <thead>
                                 <tr className="table-primary">
