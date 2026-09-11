@@ -1,6 +1,6 @@
 from gevent import monkey # type: ignore
 monkey.patch_all() 
-from flask import Flask, request, jsonify, send_file, redirect, session, Blueprint, Response, stream_with_context # type: ignore
+from flask import Flask, request, jsonify, send_file, redirect, session, Blueprint, Response, stream_with_context, url_for # type: ignore
 from flask_cors import CORS # type: ignore
 import os
 import subprocess
@@ -70,17 +70,35 @@ process_manager = None
 Login with CSH 
 """
 @api.route("/login")
-@_AUTH.oidc_auth('default')
 def login():
-    return redirect(app.config['FRONTEND_URL'])
+    session['next'] = request.args.get('next', '/')
+    return redirect(url_for('api.login_redirect'))
+
+"""
+Separate endpoint to redirect user to correct page
+"""
+@api.route("/login/csh")
+@_AUTH.oidc_auth('default')
+def login_redirect():
+    next_url = session.pop('next', '/')
+    return redirect(f"{app.config['FRONTEND_URL']}{next_url}")
 
 """
 Login with Google
 """
 @api.route("/googlelogin")
-@_AUTH.oidc_auth('google')
 def google_login():
-    return redirect(app.config['FRONTEND_URL'])
+    session['next'] = request.args.get('next', '/')
+    return redirect(url_for('api.google_login_redirect'))
+
+"""
+Separate endpoint to redirect user to correct page for Google login
+"""
+@api.route("/googlelogin/csh")
+@_AUTH.oidc_auth('google')
+def google_login_redirect():
+    next_url = session.pop('next', '/')
+    return redirect(f"{app.config['FRONTEND_URL']}{next_url}")
 
 """
 Logout 
@@ -116,6 +134,7 @@ def upload_file():
         return jsonify({"error": "No file provided"}), 400
 
     file = request.files["file"]
+    private = request.form["private"]
 
     if not file.filename.endswith(".zip"):
         return jsonify({"error": "File must be a .zip file"}), 400
@@ -183,8 +202,8 @@ def upload_file():
     
         with pool.connection() as conn:
             with conn.cursor() as cur:
-                cur.execute("INSERT INTO rooms (room_id, port, admin, extract_folder_path, arch_file_path, start, name) VALUES (%s, %s, %s, %s, %s, %s, %s)", 
-                            (room_id, port, admin, extract_folder_path, arch_file_path, start, room_name))
+                cur.execute("INSERT INTO rooms (room_id, port, admin, extract_folder_path, arch_file_path, start, name, private) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)", 
+                            (room_id, port, admin, extract_folder_path, arch_file_path, start, room_name, private))
 
                 # Build a list of every location and all the info about it to be inserted into the database
                 # Also the name and game of every slot
@@ -243,9 +262,11 @@ def get_all_rooms():
 
     with pool.connection() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT room_id, port, start, admin, extract_folder_path, name FROM rooms WHERE port >= %s AND port < %s AND active = %s", (SERVER_PORT, SERVER_PORT+PORT_RANGE, True))
+            cur.execute("SELECT room_id, port, start, admin, extract_folder_path, name, private FROM rooms WHERE port >= %s AND port < %s AND active = %s", (SERVER_PORT, SERVER_PORT+PORT_RANGE, True))
             db_rooms = cur.fetchall()
             for room in db_rooms:
+                if room[6]:
+                    continue
                 room_info = {}
                 room_info['room_id'] = room[0]
                 room_info['port'] = room[1]
@@ -672,6 +693,22 @@ def get_stats():
                 session_totals.append(session_stats)
 
             return jsonify({"slots": slots, "totals": totals, "session_totals": session_totals})
+
+"""
+Returns tracker data in the raw shape expected by ap-tracker
+(github.com/wrjones104/ap-tracker), a third-party notification client.
+"""
+@api.route("/ap_compat/<room_id>")
+def ap_compat_tracker(room_id):
+    if not exists(room_id).get("exists"):
+        return jsonify({"error": "No archipelago game with this id"}), 404
+
+    with pool.connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT arch_file_path, extract_folder_path FROM rooms WHERE room_id = %s", (room_id,))
+            info = cur.fetchone()
+
+            return jsonify(multidata.ap_compat_tracker_data(info[0], info[1]))
 
 
 """

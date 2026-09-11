@@ -20,6 +20,7 @@ function Room() {
     const [name, setName] = useState("")
     const [copiedPort, setCopiedPort] = useState("Copy")
     const [copiedLink, setCopiedLink] = useState("Copy")
+    const [deletingRoomId, setDeletingRoomId] = useState(null)
 
     useEffect(() => {
         async function restartServer() {
@@ -165,6 +166,24 @@ function Room() {
         window.location.reload()
     }
 
+    async function deleteRoom(roomId) {
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/delete/${roomId}`, {
+            method: "DELETE",
+            credentials: "include"
+        })
+
+        const result = await response.json()
+
+        if (response.ok) {
+            console.log(result.message)
+        } else {
+            console.log(result.error)
+        }
+        window.location.href = "/"
+
+        setDeletingRoomId(null) // Because of confirm delete dialog box
+    }
+
     function copyToClipboard(text, set) {
         navigator.clipboard.writeText(text)
         set("Copied!")
@@ -202,6 +221,15 @@ function Room() {
                                 Connect to: <strong>archipelago.csh.rit.edu:{port}</strong> 
                                 <button className="btn btn-copy" onClick={() => copyToClipboard(`archipelago.csh.rit.edu:${port}`, setCopiedLink)}>{copiedLink}</button>
                             </p>
+                            {
+                                admin === user?.uuid ? (
+                                    <div>
+                                        <button className="btn btn-danger mb-2" onClick={() => setDeletingRoomId(roomId)}>Delete</button>
+                                    </div>
+                                ) : (
+                                    <div></div>
+                                )
+                            }
                         </div>
                     ) : (
                         <div>
@@ -229,6 +257,26 @@ function Room() {
                     </div>
                 )}
                 {showDialogue && <div className="modal-backdrop show" />}
+                {deletingRoomId && (
+                    <div className="modal show d-block" tabIndex="-1">
+                        <div className="modal-dialog">
+                            <div className="modal-content">
+                                <div className="modal-header">
+                                    <h5 className="modal-title">Are you sure you want to delete this room?</h5>
+                                    <button className="btn-close" onClick={() => setDeletingRoomId(null)} />
+                                </div>
+                                <div className="modal-body">
+                                    <p>This action cannot be undone.</p>
+                                </div>
+                                <div className="modal-footer">
+                                    <button className="btn btn-secondary" onClick={() => setDeletingRoomId(null)}>Cancel</button>
+                                    <button className="btn btn-danger" onClick={() => deleteRoom(deletingRoomId)}>Confirm</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                {deletingRoomId && <div className="modal-backdrop show" />}
 
                 <div>
                     <Link to={`/multitracker/${roomId}`}>Multiworld Tracker</Link>

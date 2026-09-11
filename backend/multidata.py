@@ -5,6 +5,7 @@ This file handles the getting of data relevant to the multiworld and giving it t
 import os
 import zlib
 from datetime import datetime
+from email.utils import formatdate
 from Utils import restricted_loads # type: ignore
 
 """
@@ -357,3 +358,94 @@ def sphere_data(extract_folder_path, conn, room_id):
                                 items.append(item)
     
     return items
+
+"""
+Builds tracker data in the raw shape a third-party notification client
+(ap-tracker) expects. Unlike multitracker_data/individual_player_data,
+this returns raw numeric IDs matching the Archipelago network protocol
+(NetworkItem / Hint tuples) instead of human-readable strings, since
+that's what ap-tracker's dedup/notification logic is built around.
+"""
+def ap_compat_tracker_data(arch_file_path, extract_folder_path):
+    with open(arch_file_path, "rb") as f:
+        data = f.read()
+
+    decoded_arch = restricted_loads(zlib.decompress(data[1:]))
+    slot_ids = list(decoded_arch["slot_info"].keys())
+
+    apsave_path = None
+    with os.scandir(extract_folder_path) as folder:
+        for file in folder:
+            if file.is_file() and file.name.endswith(".apsave"):
+                apsave_path = file.path
+                break
+
+    if not apsave_path:
+        # No save yet -- nothing has happened in the room.
+        return {
+            "player_status": {slot: 0 for slot in slot_ids},
+            "player_checks_done": [],
+            "player_items_received": [],
+            "player_locations_total": [
+                {"player": slot, "total_locations": len(decoded_arch["locations"][slot])}
+                for slot in slot_ids
+            ],
+            "hints": [],
+            "aliases": [],
+            "last_activity": None,
+        }
+
+    with open(apsave_path, "rb") as f:
+        decoded_apsave = restricted_loads(zlib.decompress(f.read()))
+
+    player_status = {}
+    player_checks_done = []
+    player_items_received = []
+    player_locations_total = []
+    hints_by_player = {}
+
+    for slot in slot_ids:
+        team_slot = (0, slot)
+
+        player_status[slot] = decoded_apsave["client_game_state"].get(team_slot, 0)
+
+        locations_checked = decoded_apsave["location_checks"].get(team_slot, set())
+        player_checks_done.append({
+            "team": 0,
+            "player": slot,
+            "locations": list(locations_checked),
+        })
+
+        player_locations_total.append({
+            "player": slot,
+            "total_locations": len(decoded_arch["locations"][slot]),
+        })
+
+        # Raw [item_id, location_id, sending_player, flags], in received order.
+        received = decoded_apsave["received_items"].get((0, slot, True), [])
+        player_items_received.append({
+            "player": slot,
+            "items": [[item.item, item.location, item.player, item.flags] for item in received],
+        })
+
+        slot_hints = decoded_apsave["hints"].get(team_slot, [])
+        if slot_hints:
+            hints_by_player[slot] = [
+                [h.receiving_player, h.finding_player, h.location, h.item, h.found, h.entrance, h.item_flags]
+                for h in slot_hints
+            ]
+
+    last_activity_ts = 0
+    for _key, ts in decoded_apsave["client_activity_timers"]:
+        if ts > last_activity_ts:
+            last_activity_ts = ts
+
+    return {
+        "player_status": player_status,
+        "player_checks_done": player_checks_done,
+        "player_items_received": player_items_received,
+        "player_locations_total": player_locations_total,
+        "hints": [{"player": slot, "hints": h} for slot, h in hints_by_player.items()],
+        "aliases": [],
+        "last_activity": formatdate(last_activity_ts, usegmt=True) if last_activity_ts else None,
+    }

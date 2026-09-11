@@ -8,6 +8,7 @@ function Home() {
     const user = useUser()
 
     const [deletingRoomId, setDeletingRoomId] = useState(null)
+    const [isPrivate, setPrivate] = useState(false)
 
     const [rooms, setRooms] = useState([])
     const [file, setFile] = useState(null) 
@@ -37,6 +38,10 @@ function Home() {
         setFile(event.target.files[0])
     }
 
+    const handleCheckboxChange = (e) => {
+        setPrivate(e.target.checked)
+    }
+
     async function handleUpload() {
         if (!file) {
             setMessage("Please select a file first.")
@@ -46,6 +51,7 @@ function Home() {
         try {
             const formData = new FormData()
             formData.append("file", file)
+            formData.append("private", isPrivate)
 
             const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/upload`, {
                 method: "POST",
@@ -97,10 +103,15 @@ function Home() {
                 {
                     // Only CSH accounts can upload files 
                     user?.csh ? (
-                        <div className="form-group">
-                            <input type="file" accept=".zip" onChange={handleFileChange} className="form-control-file" id="exampleInputFile" aria-describedby="fileHelp" />
-                            <button className="btn btn-primary" onClick={handleUpload}>Upload</button>
-                            <br></br>
+                        <div>
+                            <div className="form-group d-flex justify-content-center align-items-center gap-2">
+                                <input type="file" accept=".zip" onChange={handleFileChange} className="form-control-file" id="exampleInputFile" aria-describedby="fileHelp" />
+                                <button className="btn btn-primary" onClick={handleUpload}>Upload</button>
+                                <label class="form-check-label d-flex justify-content-center gap-1 align-items-center">
+                                    <input class="form-check-input" type="checkbox" checked={isPrivate} onChange={handleCheckboxChange} />
+                                    Private
+                                </label>
+                            </div>
                             <small id="fileHelp" className="form-text text-muted">Upload the zip file of your generated multiworld</small>
                         </div>
                     ) : (<div></div>)
