@@ -116,6 +116,7 @@ def upload_file():
         return jsonify({"error": "No file provided"}), 400
 
     file = request.files["file"]
+    private = request.form["private"]
 
     if not file.filename.endswith(".zip"):
         return jsonify({"error": "File must be a .zip file"}), 400
@@ -183,8 +184,8 @@ def upload_file():
     
         with pool.connection() as conn:
             with conn.cursor() as cur:
-                cur.execute("INSERT INTO rooms (room_id, port, admin, extract_folder_path, arch_file_path, start, name) VALUES (%s, %s, %s, %s, %s, %s, %s)", 
-                            (room_id, port, admin, extract_folder_path, arch_file_path, start, room_name))
+                cur.execute("INSERT INTO rooms (room_id, port, admin, extract_folder_path, arch_file_path, start, name, private) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)", 
+                            (room_id, port, admin, extract_folder_path, arch_file_path, start, room_name, private))
 
                 # Build a list of every location and all the info about it to be inserted into the database
                 # Also the name and game of every slot
@@ -243,9 +244,11 @@ def get_all_rooms():
 
     with pool.connection() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT room_id, port, start, admin, extract_folder_path, name FROM rooms WHERE port >= %s AND port < %s AND active = %s", (SERVER_PORT, SERVER_PORT+PORT_RANGE, True))
+            cur.execute("SELECT room_id, port, start, admin, extract_folder_path, name, private FROM rooms WHERE port >= %s AND port < %s AND active = %s", (SERVER_PORT, SERVER_PORT+PORT_RANGE, True))
             db_rooms = cur.fetchall()
             for room in db_rooms:
+                if room[6]:
+                    continue
                 room_info = {}
                 room_info['room_id'] = room[0]
                 room_info['port'] = room[1]
