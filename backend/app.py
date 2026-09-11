@@ -1,6 +1,6 @@
 from gevent import monkey # type: ignore
 monkey.patch_all() 
-from flask import Flask, request, jsonify, send_file, redirect, session, Blueprint, Response, stream_with_context # type: ignore
+from flask import Flask, request, jsonify, send_file, redirect, session, Blueprint, Response, stream_with_context, url_for # type: ignore
 from flask_cors import CORS # type: ignore
 import os
 import subprocess
@@ -70,17 +70,35 @@ process_manager = None
 Login with CSH 
 """
 @api.route("/login")
-@_AUTH.oidc_auth('default')
 def login():
-    return redirect(app.config['FRONTEND_URL'])
+    session['next'] = request.args.get('next', '/')
+    return redirect(url_for('api.login_redirect'))
+
+"""
+Separate endpoint to redirect user to correct page
+"""
+@api.route("/login/csh")
+@_AUTH.oidc_auth('default')
+def login_redirect():
+    next_url = session.pop('next', '/')
+    return redirect(f"{app.config['FRONTEND_URL']}{next_url}")
 
 """
 Login with Google
 """
 @api.route("/googlelogin")
-@_AUTH.oidc_auth('google')
 def google_login():
-    return redirect(app.config['FRONTEND_URL'])
+    session['next'] = request.args.get('next', '/')
+    return redirect(url_for('api.google_login_redirect'))
+
+"""
+Separate endpoint to redirect user to correct page for Google login
+"""
+@api.route("/googlelogin/csh")
+@_AUTH.oidc_auth('google')
+def google_login_redirect():
+    next_url = session.pop('next', '/')
+    return redirect(f"{app.config['FRONTEND_URL']}{next_url}")
 
 """
 Logout 
