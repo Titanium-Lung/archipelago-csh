@@ -501,8 +501,8 @@ def server_command(room_id):
             command: str = data.get('command')
             send_command(room_id, command)
 
-            if command.startswith('/release') and len(command.split(' ')) == 2:
-                cur.execute("INSERT INTO released_games VALUES (%s, %s)", (command.split(' ')[1].lower(), room_id))
+            if command.startswith('/release') and len(command.split(' ')) >= 2:
+                cur.execute("INSERT INTO released_games VALUES (%s, %s)", (command[command.index(' '):].lower().strip(), room_id))
                 conn.commit()
 
             return jsonify({"message": "ok"})
