@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react"
-import { Link, useParams } from "react-router-dom"
+import { Link, useParams, useNavigate } from "react-router-dom"
 import { useUser } from "../UserContext"
 import { Navbar } from "../Navbar"
 
 function Multitracker() {
     const { roomId } = useParams()
 
+    const navigate = useNavigate()
     const user = useUser()
 
     const [port, setPort] = useState("")
@@ -103,6 +104,10 @@ function Multitracker() {
         setFilteredHints(filteredItems)
     }, [filterHints])
 
+    function sendToRoom() {
+        navigate(`/room/${roomId}`)
+    }
+
     function setSort(column, table) {
         if (table === "games") {
             if (gamesSortedColumn === column) {
@@ -147,6 +152,7 @@ function Multitracker() {
         <div>
             <title>{`Multitracker ${port}`}</title>
             <Navbar user={user}></Navbar>
+            <button className="btn btn-primary mx-md-5" onClick={sendToRoom}>Back to Room Page</button>
             <h1 className="text-center">Multiworld Tracker</h1>
             <p className="text-center">Port: {port}</p>
             <div className="mx-md-5 m-3">
