@@ -28,7 +28,9 @@ function Home() {
 
             if (response.ok) {
                 setRooms(result.rooms)
-            } 
+            } else {
+                console.log(result.error)
+            }
         }
         fetchRooms()
     }, [])

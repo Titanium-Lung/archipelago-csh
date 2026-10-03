@@ -267,6 +267,8 @@ def get_all_rooms():
             for room in db_rooms:
                 if room[6]:
                     continue
+                if not exists(room[0]):
+                    return jsonify({"error": "Could not find room data in file system"}), 500
                 room_info = {}
                 room_info['room_id'] = room[0]
                 room_info['port'] = room[1]

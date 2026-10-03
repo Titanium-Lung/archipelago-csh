@@ -1,4 +1,4 @@
-FROM node:alpine AS build
+FROM node:24.14.0-alpine AS build
 
 WORKDIR /app
 
@@ -9,7 +9,7 @@ COPY . .
 
 RUN npm run build
 
-FROM nginxinc/nginx-unprivileged AS serve
+FROM nginxinc/nginx-unprivileged:alpine3.24 AS serve
 WORKDIR /app
 COPY --from=build /app/dist /app/
 COPY nginx.conf /etc/nginx
