@@ -8,6 +8,8 @@ import subprocess
 import socket
 import threading
 import time
+import sys
+import signal
 from datetime import datetime
 from app import UPLOAD_FOLDER, ARCHIPELAGO_SERVER, SHUTDOWN_TIME
 
@@ -138,10 +140,20 @@ def write_log(process, filepath, room_id):
         if room_id in processes:
             processes[room_id] = None
 
+def handle_sigterm(signum, frame):
+    for room_id in processes:
+        if processes[room_id] is not None:
+            processes[room_id].terminate()
+            processes[room_id].wait()
+    sys.exit(0)
+
 """
 Starts listening on TCP for connections
 """
 def main():
+    signal.signal(signal.SIGTERM, handle_sigterm)
+    signal.signal(signal.SIGINT, handle_sigterm)
+
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
         server.bind((HOST, PORT))
         server.listen()
