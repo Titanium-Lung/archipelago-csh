@@ -1,15 +1,14 @@
 import { useEffect, useState, useRef } from "react"
-import { useNavigate, Link, useParams } from "react-router-dom"
+import { Link, useParams } from "react-router-dom"
+import { Virtuoso } from "react-virtuoso"
 import { useUser } from "../UserContext"
 import { Navbar } from "../Navbar"
 
 function Room() {
     const { roomId } = useParams()
 
-    const navigate = useNavigate()
     const bottomRef = useRef(null)
     const [initialFetch, setInitialFetch] = useState(true)
-    const [wasAtBottom, setWasAtBottom] = useState(true)
     const [showDialogue, setShowDialogue] = useState(false)
     const user = useUser()
 
@@ -27,8 +26,6 @@ function Room() {
             const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/restart/${roomId}`, {
                 method: "PUT"
             })
-
-            const result = await response.json()
 
             if (!response.ok) {
                 console.log("An error occured")
@@ -62,6 +59,7 @@ function Room() {
 
             const result = await response.json()
 
+
             if (response.ok) {
                 setLog(result.lines)
                 if (initialFetch) {
@@ -76,10 +74,6 @@ function Room() {
         const eventSource = new EventSource(`${import.meta.env.VITE_BACKEND_URL}/log/stream/${roomId}`)
 
         eventSource.onmessage = (event) => {
-            const logBox = bottomRef.current
-            if (logBox) {
-                setWasAtBottom(logBox.scrollHeight - logBox.scrollTop <= logBox.clientHeight + 60)
-            }
             setLog(prev => [...prev, event.data])
         }
 
@@ -105,25 +99,6 @@ function Room() {
         fetchPlayers()
     }, [])
 
-    // Autoscroll log at the begining after fetching the log if the user was at the bottom before the new lines came in
-    useEffect(() => {
-        if (!initialFetch && bottomRef.current) {
-            bottomRef.current.scrollTop = bottomRef.current.scrollHeight
-        }
-    }, [initialFetch])
-
-    // Autoscroll the log when it's updated 
-    useEffect(() => {
-        setTimeout(() => {
-            const logBox = bottomRef.current
-            if (!logBox) return
-            
-            if (wasAtBottom) {
-                logBox.scrollTop = logBox.scrollHeight
-            }
-        }, 0)
-    }, [log])
-
     const handleKeyUp = async (event) => {
         if (event.key === 'Enter') {
             console.log(event.target.value)
@@ -134,8 +109,6 @@ function Room() {
                     body: JSON.stringify({ command: event.target.value }),
                     credentials: "include"
                 })
-
-                const result = await response.json()
 
                 if (!response.ok) {
                     console.log("Failed to send command to server")
@@ -187,10 +160,6 @@ function Room() {
     function copyToClipboard(text, set) {
         navigator.clipboard.writeText(text)
         set("Copied!")
-    }
-
-    function sendToPage(url) {
-        navigate(url)
     }
 
     return (
@@ -344,10 +313,14 @@ function Room() {
                         <Link to={`/log/${roomId}`}>Full log</Link>
                     )
                 }
-                <div style={{marginBottom: '20px', height: '500px', overflowY: 'scroll'}} ref={bottomRef}>
-                    {log.map((line, index) => (
-                        <p style={{margin: '0'}} key={index}>{line}</p>
-                    ))}
+                <div style={{ marginBottom: '20px', height: '500px' }}>
+                    <Virtuoso
+                        data={log}
+                        style={{ height: '100%' }}
+                        ref={bottomRef}
+                        itemContent={(_i, item) => <div>{item}</div>}
+                        followOutput={(isAtBottom) => { return isAtBottom ? 'auto' : false; }}
+                    />
                 </div>
             </div>
         </div>
