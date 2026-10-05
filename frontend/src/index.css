@@ -8,6 +8,11 @@
   overflow-y: auto;
 }
 
+.table-wide {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
 th {
   position: sticky;
   top: 0;
