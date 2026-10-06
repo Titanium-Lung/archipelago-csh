@@ -2,7 +2,7 @@ venv/
 __pycache__/
 uploads/
 logs/
-Archipelago-0.6.7/venv/
+Archipelago-0.6.8/venv/
 *.pyc
 *.pyo
 .env

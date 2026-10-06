@@ -20,7 +20,7 @@ from datetime import datetime
 from babel.dates import format_datetime # type: ignore
 from flask_pyoidc.flask_pyoidc import OIDCAuthentication # type: ignore
 from flask_pyoidc.provider_configuration import ProviderConfiguration, ClientMetadata # type: ignore
-sys.path.insert(0, "Archipelago-0.6.7")
+sys.path.insert(0, "Archipelago-0.6.8")
 import multidata
 from process_manager_client import start_server, send_command, is_running, exists, terminate, terminate_all
 from Utils import restricted_loads # type: ignore
@@ -51,7 +51,7 @@ _GOOGLE_CONFIG = ProviderConfiguration(
 _AUTH = OIDCAuthentication({'default': _CONFIG, 'google': _GOOGLE_CONFIG}, app)
 
 UPLOAD_FOLDER = app.config['UPLOAD_FOLDER']
-ARCHIPELAGO_SERVER = "Archipelago-0.6.7/MultiServer.py"
+ARCHIPELAGO_SERVER = "Archipelago-0.6.8/MultiServer.py"
 SERVER_PORT = app.config['SERVER_PORT']
 PORT_RANGE = app.config['PORT_RANGE']
 RETRY = app.config['RETRY']
