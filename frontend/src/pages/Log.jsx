@@ -49,7 +49,7 @@ function Log() {
         <div className="m-3">
             <button className="btn btn-primary" style={{marginBottom: '10px'}} onClick={() => sendToPage(`/room/${roomId}`)}>Back to room</button>
             <h2>Log</h2>
-            <div style={{ height: '500px' }}>
+            <div style={{ height: '87.5vh' }}>
                 <Virtuoso
                     data={log}
                     style={{ height: '100%' }}
