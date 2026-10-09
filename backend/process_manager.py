@@ -10,11 +10,13 @@ import threading
 import time
 import sys
 import signal
+import logging
 from datetime import datetime
 from app import UPLOAD_FOLDER, ARCHIPELAGO_SERVER, SHUTDOWN_TIME
 
 HOST = "localhost"
 PORT = 6000
+logger = logging.getLogger(__name__)
 
 processes = {}
 
@@ -68,6 +70,13 @@ def start_server(room_id, args):
     # If the subprocess failed to start, error
     time.sleep(1)
     if archipelago_server.poll() is not None:
+        logger.error(
+            "Archipelago process failed for room %s: archive=%s port=%s exit_code=%s",
+            room_id,
+            arch_file_path,
+            port,
+            archipelago_server.returncode
+        )
         return {"result": 1}
 
     logpath = f"{extract_folder_path}/server-log.txt"
