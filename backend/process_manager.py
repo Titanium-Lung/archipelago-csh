@@ -114,9 +114,10 @@ def exists(room_id):
 Terminates the subprocess of given room id
 """
 def terminate(room_id):
-    if processes[room_id] is not None:
-        processes[room_id].terminate()
-        processes[room_id].wait()
+    process = processes.get(room_id)
+    if process is not None:
+        process.terminate()
+        process.wait()
     
     processes.pop(room_id)
 
