@@ -22,7 +22,7 @@ from flask_pyoidc.flask_pyoidc import OIDCAuthentication # type: ignore
 from flask_pyoidc.provider_configuration import ProviderConfiguration, ClientMetadata # type: ignore
 sys.path.insert(0, "Archipelago-0.6.8")
 import multidata
-from process_manager_client import start_server, send_command, is_running, exists, terminate, terminate_all
+from process_manager_client import start_server, send_command, is_running, terminate, terminate_all
 from Utils import restricted_loads # type: ignore
 from dotenv import load_dotenv # type: ignore
 load_dotenv()
@@ -62,6 +62,27 @@ DB_NAME = app.config['DB_NAME']
 DB_USER = app.config['DB_USER']
 DB_PASS = app.config['DB_PASS']
 pool = psycopg_pool.ConnectionPool(f"dbname={DB_NAME} user={DB_USER} password={DB_PASS} host={DB_HOST}", open=False)
+
+def exists_in_database(room_id):
+    with pool.connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT extract_folder_path, arch_file_path FROM rooms WHERE room_id = %s", (room_id,))
+            room = cur.fetchone()
+
+    if room is None:
+        app.logger.warning("Room %s was not found in the database", room_id)
+        return False
+
+    extract_folder_path, arch_file_path = room
+    if not os.path.isdir(extract_folder_path):
+        app.logger.warning("Room %s is missing its upload directory: %s", room_id, extract_folder_path)
+        return False
+
+    if not os.path.isfile(arch_file_path):
+        app.logger.warning("Room %s is missing its archive file: %s", room_id, arch_file_path)
+        return False
+
+    return True
 
 # Only for local development
 process_manager = None
@@ -267,7 +288,7 @@ def get_all_rooms():
             for room in db_rooms:
                 if room[6]:
                     continue
-                if not exists(room[0]):
+                if not exists_in_database(room[0]):
                     return jsonify({"error": "Could not find room data in file system"}), 500
                 room_info = {}
                 room_info['room_id'] = room[0]
@@ -291,7 +312,7 @@ Stops specified room and deletes all files associated with it
 @api.route("/delete/<room_id>", methods=["DELETE"])
 @_AUTH.oidc_auth('default')
 def delete_room(room_id):
-    if not exists(room_id).get("exists"):
+    if not exists_in_database(room_id):
         return jsonify({"error": "No archipelago game with this id"}), 404
 
     with pool.connection() as conn:
@@ -323,7 +344,7 @@ Request to restart the room. Does nothing if it's currently running
 """
 @api.route("/restart/<room_id>", methods=["PUT"])
 def restart_server(room_id):
-    if not exists(room_id).get("exists"):
+    if not exists_in_database(room_id):
         return jsonify({"error": "No archipelago game with this id"}), 404
 
     with pool.connection() as conn:
@@ -398,9 +419,9 @@ Get the contents of the log file of the specified room
 """
 @api.route("/log/<room_id>")
 def get_log(room_id):
-    if not exists(room_id).get("exists"):
+    if not exists_in_database(room_id):
         return jsonify({"error": "No archipelago game with this id"}), 404
-    
+
     with pool.connection() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT extract_folder_path FROM rooms WHERE room_id = %s", (room_id,))
@@ -419,7 +440,7 @@ Set up a stream that sends new lines in the log to the frontend
 """
 @api.route("/log/stream/<room_id>")
 def get_log_stream(room_id):
-    if not exists(room_id).get("exists"):
+    if not exists_in_database(room_id):
         return jsonify({"error": "No archipelago game with this id"}), 404
     
     with pool.connection() as conn:
@@ -440,7 +461,7 @@ Get the port and admin of the specified room
 """
 @api.route("/room/<room_id>")
 def room_info(room_id):
-    if not exists(room_id).get("exists"):
+    if not exists_in_database(room_id):
         return jsonify({"error": "No archipelago game with this id"}), 404
 
     with pool.connection() as conn:
@@ -460,7 +481,7 @@ Changes the room name of the given room
 @api.route("/room/change/<room_id>", methods=["PUT"])
 @_AUTH.oidc_auth('default')
 def change_room_name(room_id):
-    if not exists(room_id).get("exists"):
+    if not exists_in_database(room_id):
         return jsonify({"error": "No archipelago game with this id"}), 404
 
     with pool.connection() as conn:
@@ -485,7 +506,7 @@ Write the given command to stdin of the process of the specified room
 @api.route("/command/<room_id>", methods=["POST"])
 @_AUTH.oidc_auth('default')
 def server_command(room_id):
-    if not exists(room_id).get("exists"):
+    if not exists_in_database(room_id):
         return jsonify({"error": "No archipelago game with this id"}), 404
 
     if not is_running(room_id).get("running"):
@@ -514,7 +535,7 @@ Gets all the players participating in the multiworld and relevant data
 """
 @api.route("/players/<room_id>")
 def get_players(room_id):
-    if not exists(room_id).get("exists"):
+    if not exists_in_database(room_id):
         return jsonify({"error": "No archipelago game with this id"}), 404
 
     with pool.connection() as conn:
@@ -531,7 +552,7 @@ Sends the requested file
 """
 @api.route("/players/<room_id>/<filename>")
 def send_patch_file(room_id, filename):
-    if not exists(room_id).get("exists"):
+    if not exists_in_database(room_id):
         return jsonify({"error": "No archipelago game with this id"}), 404
 
     with pool.connection() as conn:
@@ -553,7 +574,7 @@ Also gets all hints
 """
 @api.route("/tracker/<room_id>")
 def multiworld_data(room_id): 
-    if not exists(room_id).get("exists"):
+    if not exists_in_database(room_id):
         return jsonify({"error": "No archipelago game with this id"}), 404
 
     with pool.connection() as conn:
@@ -576,7 +597,7 @@ Gets received items, locations, and hints for given slot
 """
 @api.route("/tracker/<room_id>/<int:slot>")
 def individual_tracker_data(room_id, slot):
-    if not exists(room_id).get("exists"):
+    if not exists_in_database(room_id):
         return jsonify({"error": "No archipelago game with this id"}), 404
 
     with pool.connection() as conn:
@@ -605,7 +626,7 @@ def assign_to_slot(room_id, slot):
     with pool.connection() as conn:
         with conn.cursor() as cur:
             if request.method == 'PUT':
-                if not exists(room_id).get("exists"):
+                if not exists_in_database(room_id):
                     return jsonify({"error": "No archipelago game with this id"}), 404
 
                 cur.execute("UPDATE slots SET player_uuid = %s WHERE id = %s AND room_id = %s", (uuid, slot, room_id))
@@ -625,7 +646,7 @@ Gets every item received by every player
 """
 @api.route("/spheres/<room_id>")
 def sphere_items(room_id):
-    if not exists(room_id).get("exists"):
+    if not exists_in_database(room_id):
         return jsonify({"error": "No archipelago game with this id"}), 404
 
     with pool.connection() as conn:
@@ -702,7 +723,7 @@ Returns tracker data in the raw shape expected by ap-tracker
 """
 @api.route("/ap_compat/<room_id>")
 def ap_compat_tracker(room_id):
-    if not exists(room_id).get("exists"):
+    if not exists_in_database(room_id):
         return jsonify({"error": "No archipelago game with this id"}), 404
 
     with pool.connection() as conn:
@@ -753,7 +774,16 @@ def restart_all():
                 
                 args = {"arch_file_path": arch_file_path, "port": port, "extract_folder_path": extract_folder_path}
 
-                start_server(room_id, args)
+                result = start_server(room_id, args)
+
+                if result.get("result", 1) == 1:
+                    app.logger.error(
+                        "Failed to restore room %s on port %s using archive %s",
+                        room_id,
+                        port,
+                        arch_file_path
+                    )
+                    continue
 
                 if room[1] != port:
                     cur.execute("UPDATE rooms SET port = %s WHERE room_id = %s", (port, room_id))
