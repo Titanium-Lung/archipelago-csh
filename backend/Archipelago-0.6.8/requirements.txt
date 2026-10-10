@@ -9,7 +9,7 @@ bsdiff4==1.2.6
 platformdirs==4.10.1
 # certifi==2026.2.25
 # cython==3.2.4
-# cymem==2.0.13
+cymem==2.0.13
 # orjson==3.11.7
 # typing_extensions==4.15.0
 # pyshortcuts==1.9.7
